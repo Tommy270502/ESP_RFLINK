@@ -2489,7 +2489,7 @@
     (property "Value" "USBLC6-2SC6" (at 43.18 110.49 0)
       (effects (font (size 1.27 1.27)))
     )
-    (property "Footprint" "SnapEda:SOT95P280X145-6N" (at 26.67 109.22 0)
+    (property "Footprint" "Package_TO_SOT_SMD:SOT-23-6_Handsoldering" (at 26.67 109.22 0)
       (effects (font (size 1.27 1.27)) (justify left bottom) hide)
     )
     (property "Datasheet" "" (at 49.53 120.65 0)
