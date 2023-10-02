@@ -325,7 +325,7 @@
       (net 3 "XC2") (pinfunction "3") (pintype "passive") (tstamp 0c94a66b-ef4a-46e4-b1d3-ec0318ca0f20))
     (pad "4" smd rect (at -0.875 -0.7 225) (size 1.15 1) (layers "F.Cu" "F.Paste" "F.Mask")
       (net 22 "GND") (pinfunction "4") (pintype "passive") (tstamp 6c1e2346-2db1-43d4-b23d-e8c08012f1e1))
-    (model "${KIPRJMOD}/KicadLibs/Crystal/ECS-160-9-36B-CKY-TR.STEP"
+    (model "C:/Users/Thomas S. Perri/Documents/KiCad/7.0/KicadLibs/Crystal/ECS-160-9-36B-CKY-TR.STEP"
       (offset (xyz 0 0 0))
       (scale (xyz 1 1 1))
       (rotate (xyz -90 0 0))
@@ -2238,7 +2238,7 @@
       (net 22 "GND") (pinfunction "Ext") (pintype "passive") (tstamp 8c8f0e8d-e425-4477-a3f3-812119079608))
     (pad "2" smd rect (at 2.825 0 180) (size 1.35 4.2) (layers "B.Cu" "B.Paste" "B.Mask")
       (net 22 "GND") (pinfunction "Ext") (pintype "passive") (tstamp ee77bd0d-fa22-4dca-b88a-e03162307b3d))
-    (model "${KIPRJMOD}/KicadLibs/Antenna/SMA Connector Edge Mount.step"
+    (model "C:/Users/Thomas S. Perri/Documents/KiCad/7.0/KicadLibs/Antenna/SMA Connector Edge Mount.step"
       (offset (xyz 0 -2.5 -1))
       (scale (xyz 1 1 1))
       (rotate (xyz 90 -180 180))
