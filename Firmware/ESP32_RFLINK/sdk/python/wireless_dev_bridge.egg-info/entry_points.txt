@@ -1,0 +1,2 @@
+[console_scripts]
+wdb = wireless_dev_bridge.cli:main
