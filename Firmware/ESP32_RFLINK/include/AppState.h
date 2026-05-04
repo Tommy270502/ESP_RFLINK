@@ -10,6 +10,7 @@ struct RadioConfig {
   bool listening = true;
   bool initialized = false;
   bool bridgeRfToWifi = true;
+  bool bridgeRfToBle = true;
 };
 
 struct PacketStats {
@@ -18,6 +19,7 @@ struct PacketStats {
   uint32_t rfTxFail = 0;
   uint32_t rfRxInvalid = 0;
   uint32_t wsRx = 0;
+  uint32_t bleRx = 0;
   uint32_t serialRx = 0;
 };
 

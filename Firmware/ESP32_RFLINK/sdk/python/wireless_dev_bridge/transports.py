@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import asyncio
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -164,6 +166,120 @@ class WebSocketTransport(BaseTransport):
 
     def close(self) -> None:
         self.ws.close()
+
+
+class BleTransport(BaseTransport):
+    SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
+    RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
+    TX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
+
+    def __init__(self, device: str = "WirelessDev-Node1", timeout: float = 5.0):
+        try:
+            from bleak import BleakClient, BleakScanner
+        except ImportError as exc:
+            raise TransportError("install bleak or use HTTP/serial/WebSocket transport") from exc
+
+        self.BleakClient = BleakClient
+        self.BleakScanner = BleakScanner
+        self.device = device
+        self.timeout = timeout
+        self.rx_buffer = bytearray()
+        self.pending_events: List[JsonDict] = []
+        self.loop = asyncio.new_event_loop()
+        self.queue: Optional[asyncio.Queue[JsonDict]] = None
+        self.client = None
+        self.thread = threading.Thread(target=self._run_loop, daemon=True)
+        self.thread.start()
+        self._run(self._connect(), timeout + 5.0)
+
+    def command(self, payload: JsonDict) -> JsonDict:
+        return self._run(self._command(payload), self.timeout)
+
+    def read_event(self, timeout: Optional[float] = None) -> JsonDict:
+        if self.pending_events:
+            return self.pending_events.pop(0)
+        return self._run(self._read_message(timeout or self.timeout), (timeout or self.timeout) + 1.0)
+
+    def iter_events(self, timeout: Optional[float] = None) -> Iterator[JsonDict]:
+        while True:
+            yield self.read_event(timeout)
+
+    def close(self) -> None:
+        try:
+            self._run(self._disconnect(), self.timeout)
+        finally:
+            self.loop.call_soon_threadsafe(self.loop.stop)
+            self.thread.join(timeout=1.0)
+
+    def _run_loop(self) -> None:
+        asyncio.set_event_loop(self.loop)
+        self.queue = asyncio.Queue()
+        self.loop.run_forever()
+
+    def _run(self, coroutine, timeout: float):
+        future = asyncio.run_coroutine_threadsafe(coroutine, self.loop)
+        try:
+            return future.result(timeout)
+        except Exception as exc:
+            raise TransportError(str(exc)) from exc
+
+    async def _connect(self) -> None:
+        target = self.device
+        if ":" not in target and not target.startswith("{"):
+            discovered = await self.BleakScanner.discover(timeout=self.timeout)
+            match = next((d for d in discovered if d.name == target), None)
+            if match is None:
+                raise TransportError(f"BLE device not found: {target}")
+            target = match.address
+
+        self.client = self.BleakClient(target)
+        await self.client.connect(timeout=self.timeout)
+        await self.client.start_notify(self.TX_UUID, self._on_notify)
+
+    async def _disconnect(self) -> None:
+        if self.client is not None and self.client.is_connected:
+            await self.client.disconnect()
+
+    async def _command(self, payload: JsonDict) -> JsonDict:
+        if self.client is None or not self.client.is_connected:
+            raise TransportError("BLE client is not connected")
+
+        cmd = str(payload.get("cmd", ""))
+        line = json.dumps(payload, separators=(",", ":")).encode("utf-8") + b"\n"
+        await self.client.write_gatt_char(self.RX_UUID, line, response=False)
+
+        deadline = time.monotonic() + self.timeout
+        while time.monotonic() < deadline:
+            message = await self._read_message(max(0.1, deadline - time.monotonic()))
+            if _is_command_response(message, cmd):
+                return message
+            self.pending_events.append(message)
+
+        raise TransportError(f"timeout waiting for BLE response to {cmd}")
+
+    async def _read_message(self, timeout: float) -> JsonDict:
+        if self.queue is None:
+            raise TransportError("BLE queue is not initialized")
+
+        try:
+            return await asyncio.wait_for(self.queue.get(), timeout=timeout)
+        except asyncio.TimeoutError as exc:
+            raise TransportError("timeout waiting for BLE JSON") from exc
+
+    def _on_notify(self, _sender: int, data: bytearray) -> None:
+        self.rx_buffer.extend(data)
+
+        while b"\n" in self.rx_buffer:
+            line, _, remainder = self.rx_buffer.partition(b"\n")
+            self.rx_buffer = bytearray(remainder)
+            if not line.strip():
+                continue
+            try:
+                message = json.loads(line.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                continue
+            if isinstance(message, dict) and self.queue is not None:
+                self.queue.put_nowait(message)
 
 
 def _loads_response(raw: bytes) -> JsonDict:

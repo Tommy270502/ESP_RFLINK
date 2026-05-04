@@ -11,7 +11,7 @@ cd sdk/python
 python -m pip install -e .
 ```
 
-For USB serial and WebSocket support:
+For USB serial, WebSocket, and BLE support:
 
 ```bash
 python -m pip install -e ".[all]"
@@ -37,6 +37,16 @@ from wireless_dev_bridge import WirelessDevBridge
 dev = WirelessDevBridge.serial("COM5")
 print(dev.self_test())
 dev.rf_send_bytes(b"hello", require_ack=True)
+```
+
+BLE:
+
+```python
+from wireless_dev_bridge import WirelessDevBridge
+
+dev = WirelessDevBridge.ble("WirelessDev-Node1")
+print(dev.protocol())
+dev.rf_send_hex("1234", require_ack=True)
 ```
 
 ## Production Test
@@ -69,6 +79,18 @@ wdb --host 192.168.4.1 status
 wdb --host 192.168.4.1 rf-send 1234 --require-ack
 wdb --serial COM5 self-test
 wdb --serial COM5 rf-config --channel 76 --datarate 1mbps --power low
+wdb --ble WirelessDev-Node1 status
+wdb --ble WirelessDev-Node1 rf-send 1234 --require-ack
 ```
 
 The CLI prints the full device response JSON.
+
+## BLE GATT Details
+
+BLE uses newline-delimited JSON over a UART-style GATT service:
+
+- Service UUID: `6e400001-b5a3-f393-e0a9-e50e24dcca9e`
+- RX write UUID: `6e400002-b5a3-f393-e0a9-e50e24dcca9e`
+- TX notify UUID: `6e400003-b5a3-f393-e0a9-e50e24dcca9e`
+
+Subscribe to TX notifications before writing commands to RX. Notifications may contain partial JSON lines, so clients should buffer until `\n`.

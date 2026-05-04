@@ -5,6 +5,7 @@
 #include "Utils.h"
 #include "RadioService.h"
 #include "BridgeService.h"
+#include "BleService.h"
 #include "CommandService.h"
 #include "WebService.h"
 
@@ -27,6 +28,8 @@ static void emitBootMessage(bool rfOk) {
   data["radio_chip_connected"] = radioService.isChipConnected();
   data["ap_ssid"] = Config::AP_SSID;
   data["ap_ip"] = WiFi.softAPIP().toString();
+  data["ble_enabled"] = bleService.enabled();
+  data["ble_name"] = Config::BLE_NAME;
   doc["error"] = nullptr;
   sendJsonSerial(doc);
 }
@@ -43,6 +46,7 @@ void setup() {
 
   bridgeService.begin();
   webService.begin();
+  bleService.begin();
   emitBootMessage(rfOk);
 
   digitalWrite(Config::PIN_LED, HIGH);
@@ -52,6 +56,7 @@ void loop() {
   commandService.pollSerial();
   radioService.poll();
   webService.poll();
+  bleService.poll();
 
   static uint32_t lastStatus = 0;
   if (millis() - lastStatus > 5000) {

@@ -4,6 +4,7 @@
 #include "Utils.h"
 #include "RadioService.h"
 #include "BridgeService.h"
+#include "BleService.h"
 #include <WiFi.h>
 #include <string.h>
 
@@ -15,6 +16,7 @@ static void fillStats(JsonObject data) {
   data["rf_tx_fail"] = stats.rfTxFail;
   data["rf_rx_invalid"] = stats.rfRxInvalid;
   data["ws_rx"] = stats.wsRx;
+  data["ble_rx"] = stats.bleRx;
   data["serial_rx"] = stats.serialRx;
 }
 
@@ -41,6 +43,9 @@ static void fillStatus(JsonObject data) {
   JsonObject bridge = data["bridge"].to<JsonObject>();
   bridgeService.fillStatus(bridge);
 
+  JsonObject ble = data["ble"].to<JsonObject>();
+  bleService.fillStatus(ble);
+
   JsonObject statData = data["stats"].to<JsonObject>();
   fillStats(statData);
 }
@@ -55,7 +60,14 @@ static void fillCapabilities(JsonObject data) {
   transports["usb_serial_jsonl"] = true;
   transports["http_json"] = true;
   transports["websocket_json"] = true;
-  transports["ble_gatt"] = false;
+  transports["ble_gatt"] = Config::BLE_ENABLE;
+
+  JsonObject ble = data["ble"].to<JsonObject>();
+  ble["service_uuid"] = Config::BLE_SERVICE_UUID;
+  ble["rx_uuid"] = Config::BLE_RX_UUID;
+  ble["tx_uuid"] = Config::BLE_TX_UUID;
+  ble["framing"] = "newline_json";
+  ble["notify_chunk_size"] = Config::BLE_NOTIFY_CHUNK_SIZE;
 
   JsonObject radio = data["radio"].to<JsonObject>();
   radio["nrf24"] = true;
@@ -316,6 +328,15 @@ static void handleBridge(JsonDocument& req, JsonDocument& res) {
     bridgeService.setRfToWifiEnabled(rfToWifi.as<bool>());
   }
 
+  JsonVariant rfToBle = req["rf_to_ble"];
+  if (!rfToBle.isNull()) {
+    if (!rfToBle.is<bool>()) {
+      commandService.makeError(res, "bridge", "invalid_arg", "rf_to_ble must be true or false");
+      return;
+    }
+    bridgeService.setRfToBleEnabled(rfToBle.as<bool>());
+  }
+
   JsonObject data = commandService.makeOk(res, "bridge");
   bridgeService.fillStatus(data);
 }
@@ -355,6 +376,9 @@ void CommandService::handle(JsonDocument& req, JsonDocument& res) {
     data["wifi_ap_mode"] = WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA;
     data["wifi_ap_ip"] = WiFi.softAPIP().toString();
     data["wifi_clients"] = WiFi.softAPgetStationNum();
+    data["ble_enabled"] = bleService.enabled();
+    data["ble_connected"] = bleService.connected();
+    data["ble_name"] = Config::BLE_NAME;
     data["free_heap"] = ESP.getFreeHeap();
     data["heap_size"] = ESP.getHeapSize();
   }

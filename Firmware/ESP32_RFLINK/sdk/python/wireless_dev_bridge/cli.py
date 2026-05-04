@@ -36,6 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     transport.add_argument("--host", default=None, help="HTTP host or URL, default 192.168.4.1")
     transport.add_argument("--serial", default=None, help="USB serial port, for example COM5")
     transport.add_argument("--ws", default=None, help="WebSocket host or URL")
+    transport.add_argument("--ble", default=None, help="BLE device name or address")
     parser.add_argument("--timeout", type=float, default=3.0)
 
     sub = parser.add_subparsers(dest="command", required=True)
@@ -83,6 +84,8 @@ def make_client(args: argparse.Namespace) -> WirelessDevBridge:
         return WirelessDevBridge.serial(args.serial, timeout=args.timeout)
     if args.ws:
         return WirelessDevBridge.websocket(args.ws, timeout=args.timeout)
+    if args.ble:
+        return WirelessDevBridge.ble(args.ble, timeout=args.timeout)
     return WirelessDevBridge.http(args.host or "192.168.4.1", timeout=args.timeout)
 
 

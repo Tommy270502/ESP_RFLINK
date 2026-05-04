@@ -21,6 +21,14 @@
 #define WIFI_AP_PASS "12345678"
 #endif
 
+#ifndef BLE_ENABLED
+#define BLE_ENABLED 1
+#endif
+
+#ifndef BLE_DEVICE_NAME
+#define BLE_DEVICE_NAME "WirelessDev-Bridge"
+#endif
+
 namespace Config {
   // Adjust these GPIOs for the final PCB routing.
   static constexpr uint8_t PIN_NRF_CE   = 45;
@@ -38,6 +46,8 @@ namespace Config {
   static constexpr const char* DEVICE_ROLE_NAME = DEVICE_ROLE;
   static constexpr const char* AP_SSID    = WIFI_AP_SSID;
   static constexpr const char* AP_PASS    = WIFI_AP_PASS;
+  static constexpr bool BLE_ENABLE = BLE_ENABLED != 0;
+  static constexpr const char* BLE_NAME = BLE_DEVICE_NAME;
 
   static constexpr uint16_t HTTP_PORT = 80;
   static constexpr uint16_t WS_PORT   = 81;
@@ -46,6 +56,12 @@ namespace Config {
   static constexpr size_t RF_PAYLOAD_MAX = 32;
   static constexpr uint8_t RF_ADDRESS_WIDTH = 5;
   static constexpr uint8_t RF_MAX_PACKETS_PER_POLL = 4;
+  static constexpr size_t BLE_MAX_LINE_LENGTH = 512;
+  static constexpr size_t BLE_NOTIFY_CHUNK_SIZE = 180;
+
+  static constexpr const char* BLE_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+  static constexpr const char* BLE_RX_UUID      = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+  static constexpr const char* BLE_TX_UUID      = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
 
   // nRF24 addresses are fixed-width byte arrays. These defaults are printable
   // for developer usability, but they are still sent as 5 raw address bytes.

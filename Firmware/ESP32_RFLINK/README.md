@@ -16,16 +16,18 @@ Firmware for a USB-C multi-protocol wireless development interface based on an E
 - Newline-delimited USB serial JSON command API
 - nRF24L01+ send, receive, configure, listen control, FIFO flush, and address configuration
 - Wi-Fi AP mode
+- BLE GATT JSON command transport
 - Browser dashboard at `http://192.168.4.1`
 - WebSocket live RF packet stream on port `81`
 - RF -> Wi-Fi/WebSocket bridge toggle
+- RF -> BLE notification bridge toggle
 - WebSocket -> RF send path through the same command protocol
 - Production-oriented `self_test` command
 - Python host SDK in `sdk/python`
 
 ## Host SDK
 
-A Python SDK is included for application and test development. HTTP mode works with the Python standard library. USB serial and WebSocket modes use optional dependencies.
+A Python SDK is included for application and test development. HTTP mode works with the Python standard library. USB serial, WebSocket, and BLE modes use optional dependencies.
 
 Install the SDK:
 
@@ -54,6 +56,13 @@ wdb --serial COM5 self-test
 wdb --serial COM5 rf-config --channel 76 --datarate 1mbps --power low
 ```
 
+Use the CLI over BLE:
+
+```bash
+wdb --ble WirelessDev-Node1 status
+wdb --ble WirelessDev-Node1 rf-send 1234 --require-ack
+```
+
 Use it from Python:
 
 ```python
@@ -62,6 +71,15 @@ from wireless_dev_bridge import WirelessDevBridge
 dev = WirelessDevBridge.serial("COM5")
 print(dev.status())
 dev.rf_send_bytes(b"hello", require_ack=True)
+```
+
+BLE from Python:
+
+```python
+from wireless_dev_bridge import WirelessDevBridge
+
+dev = WirelessDevBridge.ble("WirelessDev-Node1")
+print(dev.protocol())
 ```
 
 Run the bundled two-device production test:
@@ -93,6 +111,8 @@ If the device was previously flashed with an 8 MB image or shows core dump CRC w
 pio run --target erase
 pio run --target upload
 ```
+
+BLE support requires a larger app partition than the Arduino default OTA layout provides on 4 MB flash. This firmware uses `no_ota.csv`, giving one larger app slot and no OTA slot.
 
 5. Monitor serial:
 
@@ -173,6 +193,21 @@ For paired testing, prefer the `node1` and `node2` PlatformIO environments above
 - Password: `12345678`
 - Dashboard: `http://192.168.4.1`
 - WebSocket: `ws://192.168.4.1:81/`
+
+## BLE GATT
+
+The firmware advertises as the node-specific BLE name:
+
+- Node 1: `WirelessDev-Node1`
+- Node 2: `WirelessDev-Node2`
+
+BLE uses a UART-style GATT profile with newline-delimited JSON framing:
+
+- Service UUID: `6e400001-b5a3-f393-e0a9-e50e24dcca9e`
+- RX write UUID: `6e400002-b5a3-f393-e0a9-e50e24dcca9e`
+- TX notify UUID: `6e400003-b5a3-f393-e0a9-e50e24dcca9e`
+
+Write command JSON to the RX characteristic. Subscribe to TX notifications for command responses and RF packet events. Responses are newline-terminated and may be split across multiple BLE notifications.
 
 ## Command Response Format
 
@@ -279,6 +314,12 @@ Bridge toggle:
 {"cmd":"bridge","rf_to_wifi":true}
 ```
 
+Bridge RF packets to BLE notifications:
+
+```json
+{"cmd":"bridge","rf_to_ble":true}
+```
+
 ## HTTP API Examples
 
 Status:
@@ -381,6 +422,14 @@ You can send command JSON over WebSocket too:
 {"cmd":"rf_send","hex":"68656C6C6F"}
 ```
 
+## BLE Messages
+
+BLE uses the same command response format as USB serial, HTTP, and WebSocket. Packet events use the same event object:
+
+```json
+{"type":"packet","source":"rf","data":{"len":2,"hex":"1234","uptime_ms":12345}}
+```
+
 ## Boot Log
 
 On startup the firmware emits a serial boot JSON message:
@@ -397,7 +446,9 @@ On startup the firmware emits a serial boot JSON message:
     "radio_initialized": true,
     "radio_chip_connected": true,
     "ap_ssid": "WirelessDev-Bridge",
-    "ap_ip": "192.168.4.1"
+    "ap_ip": "192.168.4.1",
+    "ble_enabled": true,
+    "ble_name": "WirelessDev-Node1"
   },
   "error": null
 }
@@ -408,6 +459,6 @@ On startup the firmware emits a serial boot JSON message:
 - nRF24 payloads are limited to 32 bytes.
 - nRF24 addresses are fixed at 5 bytes in this V1 firmware.
 - Wi-Fi AP has no authentication beyond the shared AP password.
-- HTTP and WebSocket APIs are not authenticated.
-- No BLE, OTA, cloud, packet decoding, mesh networking, or persistence yet.
+- HTTP, WebSocket, and BLE APIs are not authenticated.
+- No OTA, cloud, packet decoding, mesh networking, or persistence yet.
 - RF settings are runtime-only and reset after reboot.

@@ -9,9 +9,12 @@ Provides-Extra: serial
 Requires-Dist: pyserial>=3.5; extra == "serial"
 Provides-Extra: websocket
 Requires-Dist: websocket-client>=1.7; extra == "websocket"
+Provides-Extra: ble
+Requires-Dist: bleak>=0.22; extra == "ble"
 Provides-Extra: all
 Requires-Dist: pyserial>=3.5; extra == "all"
 Requires-Dist: websocket-client>=1.7; extra == "all"
+Requires-Dist: bleak>=0.22; extra == "all"
 
 # Wireless Dev Bridge Python SDK
 
@@ -26,7 +29,7 @@ cd sdk/python
 python -m pip install -e .
 ```
 
-For USB serial and WebSocket support:
+For USB serial, WebSocket, and BLE support:
 
 ```bash
 python -m pip install -e ".[all]"
@@ -54,6 +57,39 @@ print(dev.self_test())
 dev.rf_send_bytes(b"hello", require_ack=True)
 ```
 
+BLE:
+
+```python
+from wireless_dev_bridge import WirelessDevBridge
+
+dev = WirelessDevBridge.ble("WirelessDev-Node1")
+print(dev.protocol())
+dev.rf_send_hex("1234", require_ack=True)
+```
+
+## Production Test
+
+Run the bundled two-device production test over USB serial:
+
+```bash
+python examples/rf_ping.py --node1-serial COM8 --node2-serial COM11
+```
+
+This script:
+
+- verifies each device role and radio health
+- sets complementary RF addresses
+- applies a known RF config
+- flushes FIFOs and enables listening
+- sends an ACK-required payload in each direction
+- confirms the opposite device received the expected RF packet
+
+For Wi-Fi-driven tests, use host arguments instead:
+
+```bash
+python examples/rf_ping.py --node1-host 192.168.4.1 --node2-host 192.168.4.2 --skip-rx-check
+```
+
 ## CLI
 
 ```bash
@@ -61,6 +97,18 @@ wdb --host 192.168.4.1 status
 wdb --host 192.168.4.1 rf-send 1234 --require-ack
 wdb --serial COM5 self-test
 wdb --serial COM5 rf-config --channel 76 --datarate 1mbps --power low
+wdb --ble WirelessDev-Node1 status
+wdb --ble WirelessDev-Node1 rf-send 1234 --require-ack
 ```
 
 The CLI prints the full device response JSON.
+
+## BLE GATT Details
+
+BLE uses newline-delimited JSON over a UART-style GATT service:
+
+- Service UUID: `6e400001-b5a3-f393-e0a9-e50e24dcca9e`
+- RX write UUID: `6e400002-b5a3-f393-e0a9-e50e24dcca9e`
+- TX notify UUID: `6e400003-b5a3-f393-e0a9-e50e24dcca9e`
+
+Subscribe to TX notifications before writing commands to RX. Notifications may contain partial JSON lines, so clients should buffer until `\n`.

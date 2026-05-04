@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional, Union
 
 from .exceptions import CommandError, ProtocolError
-from .transports import BaseTransport, HttpTransport, SerialTransport, WebSocketTransport
+from .transports import BaseTransport, BleTransport, HttpTransport, SerialTransport, WebSocketTransport
 
 Payload = Union[bytes, bytearray, memoryview]
 
@@ -23,6 +23,10 @@ class WirelessDevBridge:
     @classmethod
     def websocket(cls, host: str = "192.168.4.1", port: int = 81, timeout: float = 3.0) -> "WirelessDevBridge":
         return cls(WebSocketTransport(host=host, port=port, timeout=timeout))
+
+    @classmethod
+    def ble(cls, device: str = "WirelessDev-Node1", timeout: float = 5.0) -> "WirelessDevBridge":
+        return cls(BleTransport(device=device, timeout=timeout))
 
     def close(self) -> None:
         self.transport.close()

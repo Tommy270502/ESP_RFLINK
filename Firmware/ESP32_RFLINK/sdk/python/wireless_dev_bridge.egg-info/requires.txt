@@ -2,6 +2,10 @@
 [all]
 pyserial>=3.5
 websocket-client>=1.7
+bleak>=0.22
+
+[ble]
+bleak>=0.22
 
 [serial]
 pyserial>=3.5
