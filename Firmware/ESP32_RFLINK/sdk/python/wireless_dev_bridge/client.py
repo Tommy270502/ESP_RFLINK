@@ -112,6 +112,9 @@ class WirelessDevBridge:
     def bridge(self, rf_to_wifi: bool) -> Dict[str, Any]:
         return self.command("bridge", rf_to_wifi=rf_to_wifi)
 
+    def read_event(self, timeout: Optional[float] = None):
+        return self.transport.read_event(timeout=timeout)
+
     def iter_events(self, timeout: Optional[float] = None):
         return self.transport.iter_events(timeout=timeout)
 

@@ -39,6 +39,29 @@ print(dev.self_test())
 dev.rf_send_bytes(b"hello", require_ack=True)
 ```
 
+## Production Test
+
+Run the bundled two-device production test over USB serial:
+
+```bash
+python examples/rf_ping.py --node1-serial COM8 --node2-serial COM11
+```
+
+This script:
+
+- verifies each device role and radio health
+- sets complementary RF addresses
+- applies a known RF config
+- flushes FIFOs and enables listening
+- sends an ACK-required payload in each direction
+- confirms the opposite device received the expected RF packet
+
+For Wi-Fi-driven tests, use host arguments instead:
+
+```bash
+python examples/rf_ping.py --node1-host 192.168.4.1 --node2-host 192.168.4.2 --skip-rx-check
+```
+
 ## CLI
 
 ```bash

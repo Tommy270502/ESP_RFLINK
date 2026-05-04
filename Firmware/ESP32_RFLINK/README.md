@@ -64,6 +64,13 @@ print(dev.status())
 dev.rf_send_bytes(b"hello", require_ack=True)
 ```
 
+Run the bundled two-device production test:
+
+```bash
+cd sdk/python
+python examples/rf_ping.py --node1-serial COM8 --node2-serial COM11
+```
+
 ## Build And Upload
 
 1. Open this folder in PlatformIO.

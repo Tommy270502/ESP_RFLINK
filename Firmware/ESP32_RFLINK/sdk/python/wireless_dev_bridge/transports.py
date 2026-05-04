@@ -18,6 +18,9 @@ class BaseTransport:
     def close(self) -> None:
         pass
 
+    def read_event(self, timeout: Optional[float] = None) -> JsonDict:
+        raise NotImplementedError("this transport does not support single-event reads")
+
     def iter_events(self, timeout: Optional[float] = None) -> Iterator[JsonDict]:
         raise NotImplementedError("this transport does not support event streaming")
 
@@ -150,6 +153,14 @@ class WebSocketTransport(BaseTransport):
             message = json.loads(self.ws.recv())
             if isinstance(message, dict):
                 yield message
+
+    def read_event(self, timeout: Optional[float] = None) -> JsonDict:
+        if timeout is not None:
+            self.ws.settimeout(timeout)
+        while True:
+            message = json.loads(self.ws.recv())
+            if isinstance(message, dict):
+                return message
 
     def close(self) -> None:
         self.ws.close()
