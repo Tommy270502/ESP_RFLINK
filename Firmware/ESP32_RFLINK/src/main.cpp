@@ -20,6 +20,7 @@ static void emitBootMessage(bool rfOk) {
   JsonObject data = doc["data"].to<JsonObject>();
   data["product"] = "WirelessDevBridge";
   data["fw"] = Config::FW_VERSION;
+  data["protocol"] = Config::PROTOCOL_VERSION;
   data["role"] = Config::DEVICE_ROLE_NAME;
   data["uptime_ms"] = millis();
   data["radio_initialized"] = rfOk;

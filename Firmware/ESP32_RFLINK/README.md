@@ -21,6 +21,48 @@ Firmware for a USB-C multi-protocol wireless development interface based on an E
 - RF -> Wi-Fi/WebSocket bridge toggle
 - WebSocket -> RF send path through the same command protocol
 - Production-oriented `self_test` command
+- Python host SDK in `sdk/python`
+
+## Host SDK
+
+A Python SDK is included for application and test development. HTTP mode works with the Python standard library. USB serial and WebSocket modes use optional dependencies.
+
+Install the SDK:
+
+```bash
+cd sdk/python
+python -m pip install -e .
+```
+
+Install all transport extras:
+
+```bash
+python -m pip install -e ".[all]"
+```
+
+Use the CLI over Wi-Fi:
+
+```bash
+wdb --host 192.168.4.1 status
+wdb --host 192.168.4.1 rf-send 1234 --require-ack
+```
+
+Use the CLI over USB serial:
+
+```bash
+wdb --serial COM5 self-test
+wdb --serial COM5 rf-config --channel 76 --datarate 1mbps --power low
+```
+
+Use it from Python:
+
+```python
+from wireless_dev_bridge import WirelessDevBridge
+
+dev = WirelessDevBridge.serial("COM5")
+print(dev.status())
+dev.rf_send_bytes(b"hello", require_ack=True)
+```
 
 ## Build And Upload
 

@@ -28,6 +28,7 @@ static void fillWifiStatus(JsonObject data) {
 
 static void fillStatus(JsonObject data) {
   data["fw"] = Config::FW_VERSION;
+  data["protocol"] = Config::PROTOCOL_VERSION;
   data["role"] = Config::DEVICE_ROLE_NAME;
   data["uptime_ms"] = millis();
 
@@ -42,6 +43,42 @@ static void fillStatus(JsonObject data) {
 
   JsonObject statData = data["stats"].to<JsonObject>();
   fillStats(statData);
+}
+
+static void fillCapabilities(JsonObject data) {
+  data["product"] = "WirelessDevBridge";
+  data["fw"] = Config::FW_VERSION;
+  data["protocol"] = Config::PROTOCOL_VERSION;
+  data["role"] = Config::DEVICE_ROLE_NAME;
+
+  JsonObject transports = data["transports"].to<JsonObject>();
+  transports["usb_serial_jsonl"] = true;
+  transports["http_json"] = true;
+  transports["websocket_json"] = true;
+  transports["ble_gatt"] = false;
+
+  JsonObject radio = data["radio"].to<JsonObject>();
+  radio["nrf24"] = true;
+  radio["payload_max"] = Config::RF_PAYLOAD_MAX;
+  radio["address_width"] = Config::RF_ADDRESS_WIDTH;
+  radio["channel_min"] = 0;
+  radio["channel_max"] = 125;
+
+  JsonArray commands = data["commands"].to<JsonArray>();
+  commands.add("ping");
+  commands.add("protocol");
+  commands.add("capabilities");
+  commands.add("status");
+  commands.add("self_test");
+  commands.add("rf_config");
+  commands.add("rf_get_config");
+  commands.add("rf_send");
+  commands.add("rf_start_listen");
+  commands.add("rf_stop_listen");
+  commands.add("rf_flush_rx");
+  commands.add("rf_flush_tx");
+  commands.add("rf_set_address");
+  commands.add("bridge");
 }
 
 static bool readStringArg(JsonDocument& req, const char* key, String& out) {
@@ -295,7 +332,12 @@ void CommandService::handle(JsonDocument& req, JsonDocument& res) {
     JsonObject data = makeOk(res, cmd);
     data["pong"] = true;
     data["fw"] = Config::FW_VERSION;
+    data["protocol"] = Config::PROTOCOL_VERSION;
     data["uptime_ms"] = millis();
+  }
+  else if (strcmp(cmd, "protocol") == 0 || strcmp(cmd, "capabilities") == 0) {
+    JsonObject data = makeOk(res, cmd);
+    fillCapabilities(data);
   }
   else if (strcmp(cmd, "status") == 0) {
     JsonObject data = makeOk(res, cmd);
@@ -305,6 +347,7 @@ void CommandService::handle(JsonDocument& req, JsonDocument& res) {
     JsonObject data = makeOk(res, cmd);
     data["product"] = "WirelessDevBridge";
     data["fw"] = Config::FW_VERSION;
+    data["protocol"] = Config::PROTOCOL_VERSION;
     data["role"] = Config::DEVICE_ROLE_NAME;
     data["uptime_ms"] = millis();
     data["radio_initialized"] = rfCfg.initialized;
