@@ -1,0 +1,18 @@
+* text=auto
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.step binary
+
+*.gbr text eol=lf
+*.drl text eol=lf
+*.gbrjob text eol=lf
+*.kicad_pcb text eol=lf
+*.kicad_sch text eol=lf
+*.kicad_pro text eol=lf
+*.ini text eol=lf
+*.md text eol=lf
+*.py text eol=lf
+*.h text eol=lf
+*.cpp text eol=lf

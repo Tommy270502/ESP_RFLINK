@@ -1,3 +1,0 @@
-examples
-tests
-wireless_dev_bridge

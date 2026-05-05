@@ -2,6 +2,8 @@
 
 Firmware for a USB-C multi-protocol wireless development interface based on an ESP32-S3-WROOM-1 and nRF24L01+.
 
+For the full product launch package, start at the repository root `README.md`.
+
 ## Target
 
 - Framework: PlatformIO + Arduino
@@ -23,7 +25,7 @@ Firmware for a USB-C multi-protocol wireless development interface based on an E
 - RF -> BLE notification bridge toggle
 - WebSocket -> RF send path through the same command protocol
 - Production-oriented `self_test` command
-- Python host SDK in `sdk/python`
+- Python host SDK in repository root `sdk/python`
 
 ## Host SDK
 
@@ -32,7 +34,7 @@ A Python SDK is included for application and test development. HTTP mode works w
 Install the SDK:
 
 ```bash
-cd sdk/python
+cd ../../sdk/python
 python -m pip install -e .
 ```
 
@@ -87,11 +89,11 @@ print(dev.protocol())
 Run the bundled two-device production test:
 
 ```bash
-cd sdk/python
+cd ../../sdk/python
 python examples/rf_ping.py --node1-serial COM8 --node2-serial COM11
 ```
 
-Additional launch examples are included in `sdk/python/examples`:
+Additional launch examples are included in repository root `sdk/python/examples`:
 
 - `packet_monitor.py`: stream RF packet events over WebSocket, BLE, or serial.
 - `bridge_to_mqtt.py`: publish RF packet events to MQTT for lab automation. Requires `paho-mqtt` or `.[mqtt]`.
@@ -104,7 +106,7 @@ Additional launch examples are included in `sdk/python/examples`:
 Monitor RF packets from a dongle when bringing up RF firmware or debugging packet flow:
 
 ```bash
-cd sdk/python
+cd ../../sdk/python
 python examples/packet_monitor.py --ws 192.168.4.1 --count 10
 ```
 

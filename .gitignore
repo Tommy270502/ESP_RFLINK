@@ -1,0 +1,35 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# KiCad local state and generated caches
+*.lck
+*.kicad_prl
+fp-info-cache
+*-backups/
+
+# PlatformIO and firmware build output
+.pio/
+Firmware/**/.pio/
+*.elf
+*.map
+*.bin
+*.hex
+
+# Python build, cache, and test output
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+pytest-cache-files-*/
+.coverage
+htmlcov/
+dist/
+build/
+.venv/
+venv/
+
+# Local archives should be published as release assets instead of tracked
+*.zip
