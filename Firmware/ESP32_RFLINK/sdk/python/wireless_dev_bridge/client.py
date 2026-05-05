@@ -113,14 +113,25 @@ class WirelessDevBridge:
             format=format,
         )
 
-    def bridge(self, rf_to_wifi: bool) -> Dict[str, Any]:
-        return self.command("bridge", rf_to_wifi=rf_to_wifi)
+    def bridge(
+        self,
+        rf_to_wifi: Optional[bool] = None,
+        rf_to_ble: Optional[bool] = None,
+    ) -> Dict[str, Any]:
+        self._validate_optional_bool("rf_to_wifi", rf_to_wifi)
+        self._validate_optional_bool("rf_to_ble", rf_to_ble)
+        return self.command("bridge", rf_to_wifi=rf_to_wifi, rf_to_ble=rf_to_ble)
 
     def read_event(self, timeout: Optional[float] = None):
         return self.transport.read_event(timeout=timeout)
 
     def iter_events(self, timeout: Optional[float] = None):
         return self.transport.iter_events(timeout=timeout)
+
+    @staticmethod
+    def _validate_optional_bool(name: str, value: Optional[bool]) -> None:
+        if value is not None and not isinstance(value, bool):
+            raise ValueError(f"{name} must be true or false")
 
     @staticmethod
     def _validate_response(response: Dict[str, Any]) -> None:

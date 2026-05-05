@@ -14,20 +14,31 @@ except ImportError:
     from wireless_dev_bridge.client import WirelessDevBridge
     from wireless_dev_bridge.exceptions import BridgeError
 
+BRIDGE_MODE_FIELDS = {
+    "rf-to-wifi": "rf_to_wifi",
+    "wifi": "rf_to_wifi",
+    "rf-to-ble": "rf_to_ble",
+    "ble": "rf_to_ble",
+}
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    bridge = None
 
     try:
+        validate_args(args)
         bridge = make_client(args)
         response = run_command(bridge, args)
         print(json.dumps(response, indent=2, sort_keys=True))
-        bridge.close()
         return 0 if response.get("ok", False) else 2
-    except BridgeError as exc:
+    except (BridgeError, ValueError, json.JSONDecodeError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
+    finally:
+        if bridge is not None:
+            bridge.close()
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -70,8 +81,13 @@ def build_parser() -> argparse.ArgumentParser:
     set_address.add_argument("--tx")
     set_address.add_argument("--format", choices=["ascii", "hex"], default="ascii")
 
-    bridge = sub.add_parser("bridge")
-    bridge.add_argument("rf_to_wifi", choices=["on", "off"])
+    bridge = sub.add_parser("bridge", help="enable or disable RF event bridge modes")
+    bridge.add_argument(
+        "mode",
+        choices=["rf-to-wifi", "rf-to-ble", "wifi", "ble", "on", "off"],
+        help="bridge mode, or legacy on/off for rf-to-wifi",
+    )
+    bridge.add_argument("state", nargs="?", choices=["on", "off"], help="desired state")
 
     raw = sub.add_parser("raw")
     raw.add_argument("json_command")
@@ -87,6 +103,11 @@ def make_client(args: argparse.Namespace) -> WirelessDevBridge:
     if args.ble:
         return WirelessDevBridge.ble(args.ble, timeout=args.timeout)
     return WirelessDevBridge.http(args.host or "192.168.4.1", timeout=args.timeout)
+
+
+def validate_args(args: argparse.Namespace) -> None:
+    if args.command == "bridge":
+        parse_bridge_args(args.mode, args.state)
 
 
 def run_command(bridge: WirelessDevBridge, args: argparse.Namespace) -> Dict[str, Any]:
@@ -128,11 +149,23 @@ def run_command(bridge: WirelessDevBridge, args: argparse.Namespace) -> Dict[str
             format=args.format,
         )
     if args.command == "bridge":
-        return request(bridge, "bridge", rf_to_wifi=args.rf_to_wifi == "on")
+        return request(bridge, "bridge", **parse_bridge_args(args.mode, args.state))
     if args.command == "raw":
         payload = json.loads(args.json_command)
         return request(bridge, payload.pop("cmd"), **payload)
     raise AssertionError(args.command)
+
+
+def parse_bridge_args(mode: str, state: str | None) -> Dict[str, bool]:
+    if mode in {"on", "off"}:
+        if state is not None:
+            raise BridgeError("legacy bridge on/off form does not accept a bridge mode")
+        return {"rf_to_wifi": mode == "on"}
+
+    if state is None:
+        raise BridgeError(f"bridge mode {mode} requires state on/off")
+
+    return {BRIDGE_MODE_FIELDS[mode]: state == "on"}
 
 
 def request(bridge: WirelessDevBridge, cmd: str, **params: Any) -> Dict[str, Any]:

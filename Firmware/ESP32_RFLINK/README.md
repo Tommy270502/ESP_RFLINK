@@ -60,6 +60,7 @@ Use the CLI over BLE:
 
 ```bash
 wdb --ble WirelessDev-Node1 status
+wdb --ble WirelessDev-Node1 bridge rf-to-ble on
 wdb --ble WirelessDev-Node1 rf-send 1234 --require-ack
 ```
 
@@ -79,6 +80,7 @@ BLE from Python:
 from wireless_dev_bridge import WirelessDevBridge
 
 dev = WirelessDevBridge.ble("WirelessDev-Node1")
+dev.bridge(rf_to_ble=True)
 print(dev.protocol())
 ```
 
@@ -88,6 +90,77 @@ Run the bundled two-device production test:
 cd sdk/python
 python examples/rf_ping.py --node1-serial COM8 --node2-serial COM11
 ```
+
+Additional launch examples are included in `sdk/python/examples`:
+
+- `packet_monitor.py`: stream RF packet events over WebSocket, BLE, or serial.
+- `bridge_to_mqtt.py`: publish RF packet events to MQTT for lab automation. Requires `paho-mqtt` or `.[mqtt]`.
+- `ble_console.py`: run interactive or one-shot maintenance commands over BLE.
+- `latency_benchmark.py`: measure command or optional RF send latency.
+- `device_inventory.py`: inventory firmware, role, heap, radio health, and RF config across devices.
+
+## Getting Started By Workflow
+
+Monitor RF packets from a dongle when bringing up RF firmware or debugging packet flow:
+
+```bash
+cd sdk/python
+python examples/packet_monitor.py --ws 192.168.4.1 --count 10
+```
+
+Expected output shape:
+
+```text
+2026-05-05T12:00:00+00:00 uptime_ms=12345 len=2 hex=1234
+```
+
+Bridge RF events to BLE when a BLE host or mobile app should receive nRF24 packet events:
+
+```bash
+wdb --ble WirelessDev-Node1 bridge rf-to-ble on
+python examples/packet_monitor.py --ble WirelessDev-Node1 --count 10
+```
+
+Bridge RF events to MQTT for bench automation or dashboards:
+
+```bash
+python -m pip install -e ".[mqtt]"
+python examples/bridge_to_mqtt.py --ws 192.168.4.1 --broker localhost --topic-prefix lab/bridge1
+```
+
+Run a bench inventory/self-test before test execution:
+
+```bash
+python examples/device_inventory.py --device serial:COM5 --device serial:COM6
+```
+
+Measure transport latency across HTTP, USB serial, WebSocket, or BLE:
+
+```bash
+python examples/latency_benchmark.py --host 192.168.4.1 --count 50
+python examples/latency_benchmark.py --ble WirelessDev-Node1 --count 50 --json
+```
+
+Use the CLI for quick validation:
+
+```bash
+wdb --serial COM5 self-test
+wdb --host 192.168.4.1 status
+wdb --ws 192.168.4.1 bridge rf-to-wifi on
+wdb --ble WirelessDev-Node1 bridge rf-to-ble on
+```
+
+Expected command responses use the standard JSON shape described below with `ok`, `cmd`, `data`, and `error`.
+
+## Product Applications
+
+- nRF24 manufacturing tester: one dongle acts as the fixture controller while another or a known-good device acts as the golden peer.
+- BLE-to-nRF24 bridge for mobile apps: a phone or tablet talks BLE to the ESP32-S3, then the dongle drives nRF24 test devices.
+- RF regression harness: CI or bench scripts replay known packet patterns through the SDK.
+- Classroom wireless lab tool: one USB-C dongle exposes serial, Wi-Fi, BLE, and 2.4 GHz RF workflows.
+- Portable field diagnostic bridge: a laptop or BLE host inspects nearby nRF24-based nodes without a custom adapter.
+- Interactive protocol workbench: combine WebSocket events with a browser UI for packet watch, send, and config changes.
+- Sensor gateway prototype: nRF24 edge nodes report to the dongle while applications consume data through HTTP, WebSocket, or BLE.
 
 ## Build And Upload
 

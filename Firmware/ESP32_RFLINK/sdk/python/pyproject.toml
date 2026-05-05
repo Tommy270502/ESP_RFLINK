@@ -17,10 +17,16 @@ dependencies = []
 serial = ["pyserial>=3.5"]
 websocket = ["websocket-client>=1.7"]
 ble = ["bleak>=0.22"]
-all = ["pyserial>=3.5", "websocket-client>=1.7", "bleak>=0.22"]
+mqtt = ["paho-mqtt>=2.0"]
+test = ["pytest>=8.0"]
+all = ["pyserial>=3.5", "websocket-client>=1.7", "bleak>=0.22", "paho-mqtt>=2.0"]
 
 [project.scripts]
 wdb = "wireless_dev_bridge.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
+
+[tool.pytest.ini_options]
+addopts = "-p no:cacheprovider"
+testpaths = ["tests"]
