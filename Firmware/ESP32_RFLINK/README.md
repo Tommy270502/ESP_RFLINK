@@ -93,6 +93,12 @@ cd ../../sdk/python
 python examples/rf_ping.py --node1-serial COM8 --node2-serial COM11
 ```
 
+Run the polished two-dongle production demo with flashing and a JSON report:
+
+```bash
+python examples/production_demo.py --node1-serial COM8 --node2-serial COM11 --flash
+```
+
 Additional launch examples are included in repository root `sdk/python/examples`:
 
 - `packet_monitor.py`: stream RF packet events over WebSocket, BLE, or serial.
@@ -100,6 +106,7 @@ Additional launch examples are included in repository root `sdk/python/examples`
 - `ble_console.py`: run interactive or one-shot maintenance commands over BLE.
 - `latency_benchmark.py`: measure command or optional RF send latency.
 - `device_inventory.py`: inventory firmware, role, heap, radio health, and RF config across devices.
+- `production_demo.py`: build, flash, validate, and report a two-dongle kit.
 
 ## Getting Started By Workflow
 

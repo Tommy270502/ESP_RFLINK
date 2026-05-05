@@ -30,6 +30,7 @@ dist/
 build/
 .venv/
 venv/
+reports/
 
 # Local archives should be published as release assets instead of tracked
 *.zip

@@ -30,6 +30,7 @@ Use this checklist before publishing an external developer release.
 ## RF Validation
 
 - One `node1` and one `node2` pass `examples/rf_ping.py` over USB serial.
+- `examples/production_demo.py --flash` generates a passing JSON report for a packaged two-dongle kit.
 - ACK-required traffic succeeds in both directions.
 - Packet monitor shows expected payloads and timestamps.
 - RF config values reset to known defaults after reboot.

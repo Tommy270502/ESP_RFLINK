@@ -18,6 +18,7 @@ sys.path.insert(0, str(EXAMPLES_DIR))
         "ble_console",
         "latency_benchmark",
         "device_inventory",
+        "production_demo",
     ],
 )
 def test_examples_import_without_hardware(module_name):
@@ -47,3 +48,16 @@ def test_device_inventory_rejects_invalid_scheme():
 
     with pytest.raises(ValueError, match="unsupported"):
         inventory.parse_device_spec("ftp:192.168.4.1")
+
+
+def test_production_demo_resolves_explicit_ports():
+    demo = importlib.import_module("production_demo")
+
+    assert demo.resolve_node_ports("COM5", "COM6", auto_ports=False) == ("COM5", "COM6")
+
+
+def test_production_demo_rejects_same_port():
+    demo = importlib.import_module("production_demo")
+
+    with pytest.raises(ValueError, match="different"):
+        demo.resolve_node_ports("COM5", "COM5", auto_ports=False)

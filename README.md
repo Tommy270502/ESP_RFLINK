@@ -38,6 +38,12 @@ wdb --serial COM5 self-test
 wdb --serial COM5 status
 ```
 
+Run the two-dongle production demo with flashing and a JSON report:
+
+```bash
+python examples/production_demo.py --node1-serial COM5 --node2-serial COM6 --flash
+```
+
 Use Wi-Fi after connecting your computer to the dongle AP:
 
 ```bash

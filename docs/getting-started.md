@@ -106,6 +106,19 @@ python examples/rf_ping.py --node1-serial COM5 --node2-serial COM6
 
 The test verifies role, radio health, RF config, complementary addresses, and ACK-required traffic in both directions.
 
+For a more polished launch demo that can build, flash, validate, and generate a JSON report:
+
+```bash
+cd sdk/python
+python examples/production_demo.py --node1-serial COM5 --node2-serial COM6 --flash --operator TP --lot EVT1
+```
+
+To see connected ports first:
+
+```bash
+python examples/production_demo.py --list-ports
+```
+
 ## Common Workflows
 
 Monitor RF packets over WebSocket:

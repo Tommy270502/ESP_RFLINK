@@ -181,8 +181,33 @@ python examples/rf_ping.py --node1-serial COM8 --node2-serial COM11
 - `examples/latency_benchmark.py`: measure command or optional RF send latency.
 - `examples/device_inventory.py`: run `self_test` and RF config reads across multiple devices.
 - `examples/rf_ping.py`: two-device RF production test.
+- `examples/production_demo.py`: flash two USB dongles, run two-way RF validation, and write a demo/factory JSON report.
 
 All examples support `--help`.
+
+## Two-Dongle Production Demo
+
+Use this when presenting or validating a packaged two-dongle kit.
+
+List connected serial ports:
+
+```bash
+python examples/production_demo.py --list-ports
+```
+
+Build, flash, test, and write a report:
+
+```bash
+python examples/production_demo.py --node1-serial COM5 --node2-serial COM6 --flash --operator TP --lot EVT1
+```
+
+If exactly two serial ports are visible and you want the script to choose them:
+
+```bash
+python examples/production_demo.py --auto-ports --flash
+```
+
+The report is written to `reports/` by default and includes role validation, radio health, RF config, ACK send checks, receive confirmation, elapsed time, and pass/fail status.
 
 ## CLI
 
