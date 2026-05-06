@@ -36,7 +36,7 @@ namespace Config {
   static constexpr uint8_t PIN_NRF_SCK  = 14;
   static constexpr uint8_t PIN_NRF_MOSI = 13;
   static constexpr uint8_t PIN_NRF_MISO = 12;
-  // unused -> static constexpr uint8_t PIN_NRF_IRQ  = 14; 
+  static constexpr uint8_t PIN_NRF_IRQ = 18;
   static constexpr uint8_t PIN_LED_Rx   = 16;
   static constexpr uint8_t PIN_LED_Tx   = 17;
   static constexpr uint8_t PIN_LED      = PIN_LED_Tx;
