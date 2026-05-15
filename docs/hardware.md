@@ -19,7 +19,6 @@ Bottom view:
 | `hardware/kicad/ESPxRF.kicad_pro` | KiCad project entry point. |
 | `hardware/kicad/ESPxRF.kicad_sch` | Schematic source. |
 | `hardware/kicad/ESPxRF.kicad_pcb` | PCB layout source. |
-| `hardware/3d-models` | Bundled project-local 3D model assets. |
 | `manufacturing/gerbers` | Current Gerber and drill export. |
 
 ## Opening In KiCad
@@ -30,7 +29,7 @@ Open:
 hardware/kicad/ESPxRF.kicad_pro
 ```
 
-The KiCad project no longer depends on user-local absolute model paths. The ESP32-S3 model is referenced through the bundled `hardware/3d-models` directory, while standard passives use KiCad library models.
+The tracked KiCad files should not depend on user-local absolute paths. Standard component 3D models reference KiCad library variables where available. No project-local 3D model bundle is currently tracked in this repository.
 
 ## Manufacturing Outputs
 

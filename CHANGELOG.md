@@ -7,5 +7,6 @@
 - nRF24L01+ send, receive, listen, flush, address, and RF configuration commands.
 - RF-to-Wi-Fi/WebSocket and RF-to-BLE bridge toggles.
 - Browser dashboard served from the dongle SoftAP.
-- Python SDK, CLI, hardware-free tests, and launch examples.
-- KiCad hardware source, board images, bundled ESP32-S3 3D model, and Gerber/drill export.
+- Python SDK, CLI, desktop workbench, hardware-free tests, and launch examples.
+- Desktop workbench RF config, packet send, persistent two-port serial control, and WebSocket/BLE live event monitoring.
+- KiCad hardware source, board images, and Gerber/drill export.

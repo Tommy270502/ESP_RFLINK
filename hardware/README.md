@@ -1,6 +1,6 @@
 # Hardware
 
-KiCad hardware source and project-local mechanical assets for Wireless Dev Bridge V1.
+KiCad hardware source for Wireless Dev Bridge V1.
 
 Open the KiCad project at:
 

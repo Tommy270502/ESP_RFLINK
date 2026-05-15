@@ -66,6 +66,17 @@ wdb --ble WirelessDev-Node1 bridge rf-to-ble on
 wdb --ble WirelessDev-Node1 rf-send 1234 --require-ack
 ```
 
+Use the desktop workbench from the repository root:
+
+```bash
+python application/main.py
+```
+
+The workbench is useful during firmware bring-up because it keeps serial
+connections open per endpoint, prevents USB CDC reconnect resets while switching
+between two dongles, exposes RF config/send/address/bridge controls, and can
+stream RF packet events over WebSocket or BLE.
+
 Use it from Python:
 
 ```python
@@ -122,6 +133,9 @@ Expected output shape:
 ```text
 2026-05-05T12:00:00+00:00 uptime_ms=12345 len=2 hex=1234
 ```
+
+The desktop workbench **Live Events** tab provides the same WebSocket/BLE packet
+visibility while USB serial remains available for command control.
 
 Bridge RF events to BLE when a BLE host or mobile app should receive nRF24 packet events:
 

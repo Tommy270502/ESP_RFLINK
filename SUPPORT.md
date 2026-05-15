@@ -3,7 +3,7 @@
 For V1 developer support, include:
 
 - Firmware version from `status` or `self_test`.
-- Transport used: USB serial, HTTP, WebSocket, or BLE.
+- Host tool and transport used: CLI, SDK, desktop workbench, browser dashboard; USB serial, HTTP, WebSocket, or BLE.
 - Host OS and Python version when using the SDK.
 - Hardware role: `node1`, `node2`, or custom build flags.
 - Relevant command JSON and full response JSON.

@@ -57,6 +57,22 @@ Errors:
 | `rf_set_address` | Set RX and/or TX pipe addresses. |
 | `bridge` | Enable or disable RF-to-Wi-Fi and RF-to-BLE event forwarding. |
 
+## Status Data
+
+`status` returns the current runtime state. Useful fields:
+
+| Field | Meaning |
+| --- | --- |
+| `radio.channel` | nRF24 channel, `0..125`. |
+| `radio.datarate` | nRF24 datarate: `250kbps`, `1mbps`, or `2mbps`. Both RF peers must match. |
+| `radio.power` | TX power: `min`, `low`, `high`, or `max`. |
+| `radio.listening` | Whether the radio is in RX/listen mode. |
+| `radio.rx_address_ascii` / `radio.tx_address_ascii` | Printable 5-byte pipe addresses when available. |
+| `wifi.clients` | Number of stations associated to the SoftAP. |
+| `ble.connected` | Whether a BLE central is connected. |
+| `stats.rf_tx` / `stats.rf_rx` | RF packets transmitted and received. |
+| `stats.rf_tx_fail` | RF send failures, including ACK timeouts. |
+
 ## Command Examples
 
 ```json
@@ -96,6 +112,8 @@ Errors:
 | `/api/bridge` | `POST` | Set bridge state. |
 
 ## RF Packet Event
+
+RF packet events are emitted on USB serial, WebSocket when `rf_to_wifi` is enabled, and BLE notifications when `rf_to_ble` is enabled.
 
 ```json
 {
@@ -144,3 +162,5 @@ UART-style service:
 | TX notify | `6e400003-b5a3-f393-e0a9-e50e24dcca9e` |
 
 Subscribe to TX notifications before writing commands to RX. Responses are newline-terminated and may be split across multiple notifications.
+
+BLE is a GATT command/event transport, not classic Bluetooth serial. A BLE central writes JSON commands to RX and receives command responses or packet events on TX.

@@ -4240,17 +4240,6 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "C:/Users/Thomas/Documents/git/KicadLibs/ESP32-S3-WROOM-1-N8R8/ESP32-S3-WROOM.step"
-			(offset
-				(xyz 0 0 0)
-			)
-			(scale
-				(xyz 1 1 1)
-			)
-			(rotate
-				(xyz -90 -0 -0)
-			)
-		)
 	)
 	(footprint "Package_TO_SOT_SMD:SOT-23-5_HandSoldering"
 		(layer "F.Cu")

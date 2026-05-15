@@ -5,7 +5,7 @@ Use this checklist before publishing an external developer release.
 ## Repository
 
 - Root README explains the product, quick start, repo layout, interfaces, and V1 boundaries.
-- Firmware, SDK, hardware, manufacturing, and docs are discoverable from the repo root.
+- Firmware, application, SDK, hardware, manufacturing, and docs are discoverable from the repo root.
 - Generated caches, local KiCad files, old backup archives, Python bytecode, and egg-info files are not tracked.
 - No user-local absolute paths remain in tracked source files.
 - A license file is added before public distribution.
@@ -27,17 +27,27 @@ Use this checklist before publishing an external developer release.
 - CLI works over serial, HTTP, WebSocket, and BLE where hardware is available.
 - Examples support `--help` and document required optional dependencies.
 
+## Desktop Workbench
+
+- `python application/main.py` starts from the repository root.
+- The workbench can run `status`, `self_test`, RF config, RF send, address, and bridge commands through the shared SDK client.
+- The workbench keeps separate open connections per endpoint so switching between two serial ports does not reset boards during runtime RF testing.
+- The Live Events tab receives WebSocket packet events and BLE packet events where hardware is available.
+- Serial, HTTP, WebSocket, and BLE transport labels match the SDK and API documentation.
+
 ## RF Validation
 
 - One `node1` and one `node2` pass `examples/rf_ping.py` over USB serial.
 - `examples/production_demo.py --flash` generates a passing JSON report for a packaged two-dongle kit.
 - ACK-required traffic succeeds in both directions.
 - Packet monitor shows expected payloads and timestamps.
+- Status counters show expected `rf_tx`, `rf_rx`, `rf_tx_fail`, Wi-Fi client count, and BLE connection state.
 - RF config values reset to known defaults after reboot.
 
 ## Hardware
 
 - KiCad ERC/DRC has been reviewed for the V1 release commit.
+- Tracked KiCad source does not contain user-local absolute paths.
 - Gerber and drill files match the current KiCad PCB.
 - Board images match the released hardware revision.
 - Fab notes for stackup, thickness, copper, finish, and assembly options are captured outside the Gerber folder or in the release notes.

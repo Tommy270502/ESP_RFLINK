@@ -44,7 +44,7 @@ pio run -e node1 --target erase --upload-port COM5
 pio run -e node1 --target upload --upload-port COM5
 ```
 
-## 3. Install The SDK
+## 3. Install Host Tools
 
 From the repository root:
 
@@ -54,6 +54,15 @@ python -m pip install -e ".[all]"
 ```
 
 HTTP-only SDK usage has no runtime dependencies, but `.[all]` installs the optional serial, WebSocket, BLE, and MQTT transports used by the examples.
+
+The desktop workbench uses the same SDK and optional transport packages:
+
+```bash
+cd ../..
+python application/main.py
+```
+
+The workbench is the easiest way to validate a bench interactively. It keeps USB serial connections open per COM port, refreshes `status`, edits RF config, sends packets, and streams WebSocket/BLE packet events.
 
 ## 4. Run A Smoke Test
 
@@ -106,6 +115,14 @@ python examples/rf_ping.py --node1-serial COM5 --node2-serial COM6
 
 The test verifies role, radio health, RF config, complementary addresses, and ACK-required traffic in both directions.
 
+Manual two-dongle validation in the desktop workbench:
+
+1. Select the node 1 COM port and confirm RX `NODE1`, TX `NODE2`.
+2. Select the node 2 COM port and confirm RX `NODE2`, TX `NODE1`.
+3. Apply the same channel, datarate, and auto-ACK state on both dongles.
+4. Send ACK-required packets both directions.
+5. Confirm `rf_tx` and `rf_rx` counters increment in `status`.
+
 For a more polished launch demo that can build, flash, validate, and generate a JSON report:
 
 ```bash
@@ -127,12 +144,16 @@ Monitor RF packets over WebSocket:
 python examples/packet_monitor.py --ws 192.168.4.1 --count 10
 ```
 
+Or use the desktop workbench **Live Events** tab, choose `WebSocket`, stream from `192.168.4.1`, and send RF from the peer dongle.
+
 Bridge RF packet events to BLE:
 
 ```bash
 wdb --ble WirelessDev-Node1 bridge rf-to-ble on
 python examples/packet_monitor.py --ble WirelessDev-Node1 --count 10
 ```
+
+Or use the desktop workbench **Live Events** tab, choose `BLE`, stream from `WirelessDev-Node1` or `WirelessDev-Node2`, and send RF from the peer dongle.
 
 Bridge RF packet events to MQTT:
 

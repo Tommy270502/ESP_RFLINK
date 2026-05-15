@@ -230,6 +230,19 @@ wdb --ws 192.168.4.1 bridge off
 
 The CLI prints the full device response JSON.
 
+## Desktop Workbench
+
+The repository also includes a Tkinter host workbench at `application/main.py`.
+It imports this SDK from a checkout and exposes the same serial, HTTP,
+WebSocket, and BLE command paths as the CLI. It keeps open clients per endpoint
+for two-dongle USB workflows and includes a Live Events tab for WebSocket/BLE
+packet monitoring:
+
+```bash
+cd ../..
+python application/main.py
+```
+
 ## BLE GATT Details
 
 BLE uses newline-delimited JSON over a UART-style GATT service:

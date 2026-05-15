@@ -75,6 +75,9 @@ The V1 firmware defaults are in `include/Config.h`:
 | Protocol version | `1.0` |
 | Firmware version | `0.1.0-v1` |
 
+RF channel and datarate must match between peers. TX power can differ by peer.
+Runtime RF settings are not persisted and return to build defaults after reboot.
+
 ## Release Build Smoke Test
 
 ```bash
@@ -94,3 +97,5 @@ For hardware validation, flash one `node1` and one `node2`, then run:
 ```bash
 python examples/rf_ping.py --node1-serial COM5 --node2-serial COM6
 ```
+
+The desktop workbench can run the same validation manually: keep both serial ports open, apply matching RF config on both nodes, send ACK-required packets in both directions, and watch `rf_tx`/`rf_rx` counters plus WebSocket/BLE packet events.
