@@ -5,7 +5,9 @@
 #include "RadioService.h"
 #include "BridgeService.h"
 #include "BleService.h"
+#include "SettingsService.h"
 #include <WiFi.h>
+#include <esp_system.h>
 #include <string.h>
 
 CommandService commandService;
@@ -23,9 +25,43 @@ static void fillStats(JsonObject data) {
 static void fillWifiStatus(JsonObject data) {
   const bool apMode = WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA;
   data["ap_mode"] = apMode;
-  data["ssid"] = Config::AP_SSID;
+  data["ssid"] = settingsService.apSsid();
   data["ip"] = WiFi.softAPIP().toString();
   data["clients"] = WiFi.softAPgetStationNum();
+}
+
+static String deviceId() {
+  uint64_t mac = ESP.getEfuseMac();
+  char id[17];
+  snprintf(id, sizeof(id), "%04X%08X", static_cast<uint16_t>(mac >> 32), static_cast<uint32_t>(mac));
+  return String(id);
+}
+
+static const char* resetReasonToString(esp_reset_reason_t reason) {
+  switch (reason) {
+    case ESP_RST_POWERON: return "power_on";
+    case ESP_RST_EXT: return "external";
+    case ESP_RST_SW: return "software";
+    case ESP_RST_PANIC: return "panic";
+    case ESP_RST_INT_WDT: return "interrupt_watchdog";
+    case ESP_RST_TASK_WDT: return "task_watchdog";
+    case ESP_RST_WDT: return "watchdog";
+    case ESP_RST_DEEPSLEEP: return "deep_sleep";
+    case ESP_RST_BROWNOUT: return "brownout";
+    case ESP_RST_SDIO: return "sdio";
+    default: return "unknown";
+  }
+}
+
+static void fillLastError(JsonObject data) {
+  if (lastErrorCode.length() == 0) {
+    data["last_error"] = nullptr;
+    return;
+  }
+
+  JsonObject error = data["last_error"].to<JsonObject>();
+  error["code"] = lastErrorCode;
+  error["message"] = lastErrorMessage;
 }
 
 static void fillStatus(JsonObject data) {
@@ -48,6 +84,22 @@ static void fillStatus(JsonObject data) {
 
   JsonObject statData = data["stats"].to<JsonObject>();
   fillStats(statData);
+
+  JsonObject device = data["device"].to<JsonObject>();
+  settingsService.fillDevice(device);
+  device["id"] = deviceId();
+  device["fw"] = Config::FW_VERSION;
+  device["protocol"] = Config::PROTOCOL_VERSION;
+  device["softap_mac"] = WiFi.softAPmacAddress();
+
+  JsonObject storage = data["storage"].to<JsonObject>();
+  settingsService.fillStorage(storage);
+
+  JsonObject security = data["security"].to<JsonObject>();
+  settingsService.fillSecurity(security);
+
+  data["reset_reason"] = resetReasonToString(esp_reset_reason());
+  fillLastError(data);
 }
 
 static void fillCapabilities(JsonObject data) {
@@ -55,6 +107,8 @@ static void fillCapabilities(JsonObject data) {
   data["fw"] = Config::FW_VERSION;
   data["protocol"] = Config::PROTOCOL_VERSION;
   data["role"] = Config::DEVICE_ROLE_NAME;
+  data["settings_persistence"] = true;
+  data["optional_auth"] = true;
 
   JsonObject transports = data["transports"].to<JsonObject>();
   transports["usb_serial_jsonl"] = true;
@@ -91,6 +145,12 @@ static void fillCapabilities(JsonObject data) {
   commands.add("rf_flush_tx");
   commands.add("rf_set_address");
   commands.add("bridge");
+  commands.add("settings_get");
+  commands.add("settings_set");
+  commands.add("settings_save");
+  commands.add("settings_reset");
+  commands.add("diagnostics");
+  commands.add("identify");
 }
 
 static bool readStringArg(JsonDocument& req, const char* key, String& out) {
@@ -126,6 +186,8 @@ void CommandService::makeError(JsonDocument& res, const char* cmd, const char* c
   JsonObject error = res["error"].to<JsonObject>();
   error["code"] = code;
   error["message"] = message;
+  lastErrorCode = code;
+  lastErrorMessage = message;
 }
 
 static void handleRfConfig(JsonDocument& req, JsonDocument& res) {
@@ -341,12 +403,263 @@ static void handleBridge(JsonDocument& req, JsonDocument& res) {
   bridgeService.fillStatus(data);
 }
 
-void CommandService::handle(JsonDocument& req, JsonDocument& res) {
+static bool readStringMember(JsonObject obj, const char* key, String& out) {
+  JsonVariant arg = obj[key];
+  if (arg.isNull() || !arg.is<const char*>()) return false;
+
+  out = arg.as<const char*>();
+  out.trim();
+  return true;
+}
+
+static void fillSelfTest(JsonObject data) {
+  data["product"] = "WirelessDevBridge";
+  data["fw"] = Config::FW_VERSION;
+  data["protocol"] = Config::PROTOCOL_VERSION;
+  data["role"] = Config::DEVICE_ROLE_NAME;
+  data["uptime_ms"] = millis();
+  data["radio_initialized"] = rfCfg.initialized;
+  data["radio_chip_connected"] = radioService.isChipConnected();
+  data["wifi_ap_mode"] = WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA;
+  data["wifi_ap_ip"] = WiFi.softAPIP().toString();
+  data["wifi_clients"] = WiFi.softAPgetStationNum();
+  data["ble_enabled"] = bleService.enabled();
+  data["ble_connected"] = bleService.connected();
+  data["ble_name"] = settingsService.bleName();
+  data["free_heap"] = ESP.getFreeHeap();
+  data["heap_size"] = ESP.getHeapSize();
+  data["settings_loaded"] = settingsService.loadedFromNvs();
+}
+
+static void handleSettingsGet(JsonDocument& res) {
+  JsonObject data = commandService.makeOk(res, "settings_get");
+  settingsService.fillSettings(data);
+}
+
+static bool applySettingsAddress(JsonObject rf, const char* key, bool rxPipe, const String& format, JsonDocument& res) {
+  if (rf[key].isNull()) return true;
+
+  String value;
+  uint8_t address[Config::RF_ADDRESS_WIDTH];
+  if (!readStringMember(rf, key, value) || !parseRadioAddress(value, format, address, sizeof(address))) {
+    commandService.makeError(res, "settings_set", "invalid_address", "address must be 5 ASCII chars or 5 bytes as hex");
+    return false;
+  }
+
+  bool ok = rxPipe ? radioService.setRxAddress(address, sizeof(address)) : radioService.setTxAddress(address, sizeof(address));
+  if (!ok) {
+    commandService.makeError(res, "settings_set", "radio_not_initialized", "radio not initialized");
+    return false;
+  }
+  return true;
+}
+
+static bool applySettingsObject(JsonDocument& req, JsonDocument& res) {
+  if (!req["rf"].isNull()) {
+    if (!req["rf"].is<JsonObject>()) {
+      commandService.makeError(res, "settings_set", "invalid_arg", "rf must be an object");
+      return false;
+    }
+    JsonObject rf = req["rf"].as<JsonObject>();
+
+    JsonDocument rfReq;
+    rfReq["cmd"] = "rf_config";
+    if (!rf["channel"].isNull()) rfReq["channel"] = rf["channel"];
+    if (!rf["datarate"].isNull()) rfReq["datarate"] = rf["datarate"];
+    if (!rf["power"].isNull()) rfReq["power"] = rf["power"];
+    if (!rf["auto_ack"].isNull()) rfReq["auto_ack"] = rf["auto_ack"];
+    handleRfConfig(rfReq, res);
+    if (!res["ok"].as<bool>()) return false;
+
+    String format = rf["address_format"] | "ascii";
+    if (!applySettingsAddress(rf, "rx", true, format, res)) return false;
+    if (!applySettingsAddress(rf, "tx", false, format, res)) return false;
+  }
+
+  if (!req["bridge"].isNull()) {
+    if (!req["bridge"].is<JsonObject>()) {
+      commandService.makeError(res, "settings_set", "invalid_arg", "bridge must be an object");
+      return false;
+    }
+    JsonObject bridge = req["bridge"].as<JsonObject>();
+    JsonVariant rfToWifi = bridge["rf_to_wifi"];
+    if (!rfToWifi.isNull()) {
+      if (!rfToWifi.is<bool>()) {
+        commandService.makeError(res, "settings_set", "invalid_arg", "bridge.rf_to_wifi must be true or false");
+        return false;
+      }
+      bridgeService.setRfToWifiEnabled(rfToWifi.as<bool>());
+    }
+    JsonVariant rfToBle = bridge["rf_to_ble"];
+    if (!rfToBle.isNull()) {
+      if (!rfToBle.is<bool>()) {
+        commandService.makeError(res, "settings_set", "invalid_arg", "bridge.rf_to_ble must be true or false");
+        return false;
+      }
+      bridgeService.setRfToBleEnabled(rfToBle.as<bool>());
+    }
+  }
+
+  if (!req["device"].isNull()) {
+    if (!req["device"].is<JsonObject>()) {
+      commandService.makeError(res, "settings_set", "invalid_arg", "device must be an object");
+      return false;
+    }
+    JsonObject device = req["device"].as<JsonObject>();
+    String value;
+    if (!device["name"].isNull()) {
+      if (!readStringMember(device, "name", value) || !settingsService.setDeviceName(value)) {
+        commandService.makeError(res, "settings_set", "invalid_setting", "device.name must be 1..32 characters");
+        return false;
+      }
+    }
+    if (!device["ap_ssid"].isNull()) {
+      if (!readStringMember(device, "ap_ssid", value) || !settingsService.setApSsid(value)) {
+        commandService.makeError(res, "settings_set", "invalid_setting", "device.ap_ssid must be 1..32 characters");
+        return false;
+      }
+    }
+    if (!device["ap_pass"].isNull()) {
+      if (!readStringMember(device, "ap_pass", value) || !settingsService.setApPass(value)) {
+        commandService.makeError(res, "settings_set", "invalid_setting", "device.ap_pass must be 8..63 characters");
+        return false;
+      }
+    }
+    if (!device["ble_name"].isNull()) {
+      if (!readStringMember(device, "ble_name", value) || !settingsService.setBleName(value)) {
+        commandService.makeError(res, "settings_set", "invalid_setting", "device.ble_name must be 1..32 characters");
+        return false;
+      }
+    }
+  }
+
+  if (!req["security"].isNull()) {
+    if (!req["security"].is<JsonObject>()) {
+      commandService.makeError(res, "settings_set", "invalid_arg", "security must be an object");
+      return false;
+    }
+    JsonObject security = req["security"].as<JsonObject>();
+    JsonVariant authRequired = security["auth_required"];
+    if (!authRequired.isNull()) {
+      if (!authRequired.is<bool>()) {
+        commandService.makeError(res, "settings_set", "invalid_arg", "security.auth_required must be true or false");
+        return false;
+      }
+      settingsService.setAuthRequired(authRequired.as<bool>());
+    }
+    if (!security["auth_token"].isNull()) {
+      String token;
+      if (!readStringMember(security, "auth_token", token) || !settingsService.setAuthToken(token)) {
+        commandService.makeError(res, "settings_set", "invalid_setting", "security.auth_token must be 64 characters or fewer");
+        return false;
+      }
+    }
+  }
+
+  settingsService.markDirty();
+  return true;
+}
+
+static void handleSettingsSet(JsonDocument& req, JsonDocument& res) {
+  if (!applySettingsObject(req, res)) return;
+
+  JsonObject data = commandService.makeOk(res, "settings_set");
+  settingsService.fillSettings(data);
+}
+
+static void handleSettingsSave(JsonDocument& res) {
+  if (!settingsService.save()) {
+    commandService.makeError(res, "settings_save", "nvs_error", "failed to save settings");
+    return;
+  }
+
+  JsonObject data = commandService.makeOk(res, "settings_save");
+  settingsService.fillSettings(data);
+}
+
+static void handleSettingsReset(JsonDocument& res) {
+  if (!settingsService.reset()) {
+    commandService.makeError(res, "settings_reset", "nvs_error", "failed to reset settings");
+    return;
+  }
+
+  JsonObject data = commandService.makeOk(res, "settings_reset");
+  settingsService.fillSettings(data);
+}
+
+static void fillDiagnostics(JsonObject data) {
+  JsonObject selfTest = data["self_test"].to<JsonObject>();
+  fillSelfTest(selfTest);
+
+  data["reset_reason"] = resetReasonToString(esp_reset_reason());
+  data["uptime_ms"] = millis();
+  data["free_heap"] = ESP.getFreeHeap();
+  data["heap_size"] = ESP.getHeapSize();
+  data["sdk_version"] = ESP.getSdkVersion();
+
+  JsonObject chip = data["chip"].to<JsonObject>();
+  chip["model"] = ESP.getChipModel();
+  chip["revision"] = ESP.getChipRevision();
+  chip["cores"] = ESP.getChipCores();
+  chip["flash_size"] = ESP.getFlashChipSize();
+  chip["efuse_mac"] = deviceId();
+
+  JsonObject status = data["status"].to<JsonObject>();
+  fillStatus(status);
+
+  JsonObject settings = data["settings"].to<JsonObject>();
+  settingsService.fillSettings(settings);
+}
+
+static void handleDiagnostics(JsonDocument& res) {
+  JsonObject data = commandService.makeOk(res, "diagnostics");
+  fillDiagnostics(data);
+}
+
+static void fillIdentity(JsonObject data) {
+  data["product"] = "WirelessDevBridge";
+  data["fw"] = Config::FW_VERSION;
+  data["protocol"] = Config::PROTOCOL_VERSION;
+  data["role"] = Config::DEVICE_ROLE_NAME;
+  data["id"] = deviceId();
+  data["ap_ssid"] = settingsService.apSsid();
+  data["ap_ip"] = WiFi.softAPIP().toString();
+  data["softap_mac"] = WiFi.softAPmacAddress();
+  data["ble_name"] = settingsService.bleName();
+}
+
+static void handleIdentify(JsonDocument& res) {
+  bool previous = digitalRead(Config::PIN_LED);
+  for (uint8_t i = 0; i < 3; i++) {
+    digitalWrite(Config::PIN_LED, LOW);
+    delay(90);
+    digitalWrite(Config::PIN_LED, HIGH);
+    delay(90);
+  }
+  digitalWrite(Config::PIN_LED, previous);
+
+  JsonObject data = commandService.makeOk(res, "identify");
+  fillIdentity(data);
+}
+
+static bool authExempt(const char* cmd) {
+  return strcmp(cmd, "ping") == 0 || strcmp(cmd, "protocol") == 0 || strcmp(cmd, "capabilities") == 0;
+}
+
+void CommandService::handle(JsonDocument& req, JsonDocument& res, CommandTransport transport) {
   const char* cmd = req["cmd"] | "";
 
   if (strlen(cmd) == 0) {
     makeError(res, "", "missing_cmd", "cmd is required");
     return;
+  }
+
+  if (transport != CommandTransport::Serial && settingsService.authRequired() && !authExempt(cmd)) {
+    const char* token = req["auth"] | "";
+    if (!settingsService.checkAuth(token)) {
+      makeError(res, cmd, "auth_required", "valid auth token required");
+      return;
+    }
   }
 
   if (strcmp(cmd, "ping") == 0) {
@@ -366,21 +679,7 @@ void CommandService::handle(JsonDocument& req, JsonDocument& res) {
   }
   else if (strcmp(cmd, "self_test") == 0) {
     JsonObject data = makeOk(res, cmd);
-    data["product"] = "WirelessDevBridge";
-    data["fw"] = Config::FW_VERSION;
-    data["protocol"] = Config::PROTOCOL_VERSION;
-    data["role"] = Config::DEVICE_ROLE_NAME;
-    data["uptime_ms"] = millis();
-    data["radio_initialized"] = rfCfg.initialized;
-    data["radio_chip_connected"] = radioService.isChipConnected();
-    data["wifi_ap_mode"] = WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA;
-    data["wifi_ap_ip"] = WiFi.softAPIP().toString();
-    data["wifi_clients"] = WiFi.softAPgetStationNum();
-    data["ble_enabled"] = bleService.enabled();
-    data["ble_connected"] = bleService.connected();
-    data["ble_name"] = Config::BLE_NAME;
-    data["free_heap"] = ESP.getFreeHeap();
-    data["heap_size"] = ESP.getHeapSize();
+    fillSelfTest(data);
   }
   else if (strcmp(cmd, "rf_config") == 0) {
     handleRfConfig(req, res);
@@ -443,6 +742,24 @@ void CommandService::handle(JsonDocument& req, JsonDocument& res) {
   }
   else if (strcmp(cmd, "bridge") == 0) {
     handleBridge(req, res);
+  }
+  else if (strcmp(cmd, "settings_get") == 0) {
+    handleSettingsGet(res);
+  }
+  else if (strcmp(cmd, "settings_set") == 0) {
+    handleSettingsSet(req, res);
+  }
+  else if (strcmp(cmd, "settings_save") == 0) {
+    handleSettingsSave(res);
+  }
+  else if (strcmp(cmd, "settings_reset") == 0) {
+    handleSettingsReset(res);
+  }
+  else if (strcmp(cmd, "diagnostics") == 0) {
+    handleDiagnostics(res);
+  }
+  else if (strcmp(cmd, "identify") == 0) {
+    handleIdentify(res);
   }
   else {
     makeError(res, cmd, "unknown_cmd", "unknown command");

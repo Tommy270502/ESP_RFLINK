@@ -126,10 +126,10 @@ To prove wireless event streaming, use the **Live Events** tab:
 
 - nRF24 payloads are limited to 32 bytes.
 - nRF24 address width is fixed at 5 bytes.
-- RF configuration is runtime-only and resets on reboot.
+- RF configuration is runtime-only until saved with protocol `1.1` settings commands.
 - HTTP, WebSocket, and BLE APIs are intended for trusted developer/lab networks.
 - OTA, cloud connectivity, packet decoding, persistence, and mesh networking are out of scope for V1.
 
 ## License
 
-No license file is currently included. Add one before publishing this repository publicly so external developers know their usage rights.
+Software is licensed under the MIT License. Hardware source and manufacturing outputs carry the hardware license notice in `hardware/LICENSE.md`.

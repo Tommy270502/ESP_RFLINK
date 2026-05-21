@@ -42,7 +42,7 @@ namespace Config {
   static constexpr uint8_t PIN_LED      = PIN_LED_Tx;
 
   static constexpr const char* FW_VERSION = "0.1.0-v1";
-  static constexpr const char* PROTOCOL_VERSION = "1.0";
+  static constexpr const char* PROTOCOL_VERSION = "1.1";
   static constexpr const char* DEVICE_ROLE_NAME = DEVICE_ROLE;
   static constexpr const char* AP_SSID    = WIFI_AP_SSID;
   static constexpr const char* AP_PASS    = WIFI_AP_PASS;

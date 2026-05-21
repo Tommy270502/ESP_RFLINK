@@ -3,11 +3,13 @@
 #include "AppState.h"
 #include "Utils.h"
 #include "CommandService.h"
+#include "SettingsService.h"
 #include "WebUi.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <WebSocketsServer.h>
 #include <ArduinoJson.h>
+#include <string.h>
 
 static WebServer server(Config::HTTP_PORT);
 static WebSocketsServer ws(Config::WS_PORT);
@@ -16,12 +18,27 @@ WebService webService;
 static void sendJsonHttp(const JsonDocument& doc) {
   String out;
   serializeJson(doc, out);
-  server.send(doc["ok"].as<bool>() ? 200 : 400, "application/json", out);
+  const char* code = doc["error"]["code"] | "";
+  int status = doc["ok"].as<bool>() ? 200 : (strcmp(code, "auth_required") == 0 ? 401 : 400);
+  server.send(status, "application/json", out);
 }
 
-static void runCommand(JsonDocument& req, JsonDocument& res, const char* forcedCmd = nullptr) {
+static void injectHttpAuth(JsonDocument& req) {
+  if (!req["auth"].isNull()) return;
+
+  String token = server.header("X-WDB-Token");
+  if (token.length() > 0) req["auth"] = token;
+}
+
+static void runCommand(
+  JsonDocument& req,
+  JsonDocument& res,
+  const char* forcedCmd = nullptr,
+  CommandTransport transport = CommandTransport::Http
+) {
   if (forcedCmd != nullptr) req["cmd"] = forcedCmd;
-  commandService.handle(req, res);
+  if (transport == CommandTransport::Http) injectHttpAuth(req);
+  commandService.handle(req, res, transport);
 }
 
 static void handleJsonCommandHttp(const char* forcedCmd = nullptr) {
@@ -63,7 +80,7 @@ static void onWsEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t lengt
     if (err) {
       commandService.makeError(res, "", "invalid_json", err.c_str());
     } else {
-      commandService.handle(req, res);
+      commandService.handle(req, res, CommandTransport::WebSocket);
     }
 
     String out;
@@ -75,8 +92,10 @@ static void onWsEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t lengt
 
 void WebService::begin() {
   WiFi.mode(WIFI_AP);
-  WiFi.softAP(Config::AP_SSID, Config::AP_PASS, 1, 0, 10);
+  WiFi.softAP(settingsService.apSsid(), settingsService.apPass(), 1, 0, 10);
 
+  const char* headers[] = {"X-WDB-Token"};
+  server.collectHeaders(headers, 1);
   setupRoutes();
   server.begin();
 

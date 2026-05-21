@@ -25,6 +25,7 @@ For the full product launch package, start at the repository root `project-overv
 - RF -> BLE notification bridge toggle
 - WebSocket -> RF send path through the same command protocol
 - Production-oriented `self_test` command
+- Protocol 1.1 settings persistence, diagnostics, identify, optional auth, and support metadata
 - Python host SDK in repository root `sdk/python`
 
 ## Host SDK
@@ -55,6 +56,7 @@ Use the CLI over USB serial:
 
 ```bash
 wdb --serial COM5 self-test
+wdb --serial COM5 diagnostics
 wdb --serial COM5 rf-config --channel 76 --datarate 1mbps --power low
 ```
 
@@ -503,6 +505,7 @@ Status event:
   "type": "status",
   "data": {
     "fw": "0.1.0-v1",
+    "protocol": "1.1",
     "uptime_ms": 12345,
     "radio": {},
     "wifi": {},
@@ -554,7 +557,6 @@ On startup the firmware emits a serial boot JSON message:
 
 - nRF24 payloads are limited to 32 bytes.
 - nRF24 addresses are fixed at 5 bytes in this V1 firmware.
-- Wi-Fi AP has no authentication beyond the shared AP password.
-- HTTP, WebSocket, and BLE APIs are not authenticated.
-- No OTA, cloud, packet decoding, mesh networking, or persistence yet.
-- RF settings are runtime-only and reset after reboot.
+- Wi-Fi AP has no authentication beyond the configured AP password.
+- HTTP, WebSocket, and BLE APIs are unauthenticated by default, with optional token auth in protocol 1.1.
+- No OTA, cloud, packet decoding, or mesh networking yet.

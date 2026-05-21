@@ -2,6 +2,7 @@
 #include "Config.h"
 #include "AppState.h"
 #include "CommandService.h"
+#include "SettingsService.h"
 #include "Utils.h"
 
 #if BLE_ENABLED
@@ -44,7 +45,7 @@ void BleService::begin() {
 #if BLE_ENABLED
   if (!Config::BLE_ENABLE) return;
 
-  BLEDevice::init(Config::BLE_NAME);
+  BLEDevice::init(settingsService.bleName());
   BLEDevice::setMTU(185);
 
   bleServer = BLEDevice::createServer();
@@ -98,7 +99,7 @@ void BleService::setConnected(bool isConnected) {
 void BleService::fillStatus(JsonObject data) const {
   data["enabled"] = bleEnabled;
   data["connected"] = bleConnected;
-  data["name"] = Config::BLE_NAME;
+  data["name"] = settingsService.bleName();
   data["service_uuid"] = Config::BLE_SERVICE_UUID;
   data["rx_uuid"] = Config::BLE_RX_UUID;
   data["tx_uuid"] = Config::BLE_TX_UUID;
@@ -173,7 +174,7 @@ void BleService::handleLine(const String& line) {
   if (err) {
     commandService.makeError(res, "", "invalid_json", err.c_str());
   } else {
-    commandService.handle(req, res);
+    commandService.handle(req, res, CommandTransport::Ble);
   }
 
   notifyJson(res);

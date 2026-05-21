@@ -25,3 +25,5 @@ struct PacketStats {
 
 extern RadioConfig rfCfg;
 extern PacketStats stats;
+extern String lastErrorCode;
+extern String lastErrorMessage;

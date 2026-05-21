@@ -19,6 +19,10 @@ Bottom view:
 | `hardware/kicad/ESPxRF.kicad_pro` | KiCad project entry point. |
 | `hardware/kicad/ESPxRF.kicad_sch` | Schematic source. |
 | `hardware/kicad/ESPxRF.kicad_pcb` | PCB layout source. |
+| `hardware/BOM.md` | BOM release checklist and sourcing notes. |
+| `hardware/ASSEMBLY.md` | Assembly and bring-up notes. |
+| `hardware/BOARD_REVISION.md` | Board revision notes. |
+| `hardware/PINOUT.md` | Pinout card for firmware/hardware alignment. |
 | `manufacturing/gerbers` | Current Gerber and drill export. |
 
 ## Opening In KiCad

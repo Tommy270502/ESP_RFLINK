@@ -71,6 +71,7 @@ USB serial:
 ```bash
 wdb --serial COM5 self-test
 wdb --serial COM5 status
+wdb --serial COM5 diagnostics
 ```
 
 Wi-Fi:
@@ -135,6 +136,14 @@ To see connected ports first:
 ```bash
 python examples/production_demo.py --list-ports
 ```
+
+The CLI can also collect a support report from a single device:
+
+```bash
+wdb --serial COM5 report --output reports/node1-report.json
+```
+
+For a product-style first-run flow, see [First Run](first-run.md).
 
 ## Common Workflows
 

@@ -31,6 +31,9 @@ python -m pip install -e ".[all]"
 - Toggle RF-to-Wi-Fi/WebSocket and RF-to-BLE bridge forwarding.
 - Stream live RF packet events over WebSocket or BLE while sending commands through another transport.
 - Send raw top-level JSON commands for firmware features not surfaced by a form.
+- Send protocol 1.1 `identify`, `diagnostics`, `settings_get`, and `settings_save` commands from the quick-action bar.
+- Use an auth token for protected HTTP, WebSocket, or BLE command surfaces.
+- Export a support report JSON with host, connection, status, self-test, diagnostics, and settings responses.
 
 Use **Disconnect** before opening the same serial ports in another tool.
 
@@ -55,7 +58,7 @@ reconnect resets when switching between COM ports.
 - Channel must match on both RF peers.
 - Datarate must match on both RF peers: `250kbps`, `1mbps`, or `2mbps`.
 - Power can differ by peer: `min`, `low`, `high`, or `max`.
-- Runtime RF settings reset when a dongle reboots.
+- Runtime RF settings reset when a dongle reboots unless protocol 1.1 settings have been saved with `settings_save`.
 - The app protects in-progress RF config edits from automatic status refreshes.
 
 ## Live Events

@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import json
+import platform
 import queue
 import sys
 import threading
 from pathlib import Path
+from datetime import datetime, timezone
 from typing import Any, Callable
 
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
 
 
 APP_DIR = Path(__file__).resolve().parent
@@ -59,7 +61,7 @@ class WirelessDevBridgeApp(tk.Tk):
         self.result_queue: queue.Queue[tuple[str, Any]] = queue.Queue()
         self.busy = False
         self.command_buttons: list[ttk.Button] = []
-        self.active_bridges: dict[tuple[str, str, float], WirelessDevBridge] = {}
+        self.active_bridges: dict[tuple[str, str, float, str], WirelessDevBridge] = {}
         self.event_thread: threading.Thread | None = None
         self.event_stop: threading.Event | None = None
         self.event_bridge: WirelessDevBridge | None = None
@@ -75,6 +77,7 @@ class WirelessDevBridgeApp(tk.Tk):
         self.ws_host_var = tk.StringVar(value="192.168.4.1")
         self.ble_device_var = tk.StringVar(value="WirelessDev-Node1")
         self.timeout_var = tk.StringVar(value=str(DEFAULT_TIMEOUT_SECONDS))
+        self.auth_token_var = tk.StringVar()
         self.endpoint_label_var = tk.StringVar(value="Port")
         self.auto_status_var = tk.BooleanVar(value=True)
         self.event_transport_var = tk.StringVar(value=TRANSPORT_WEBSOCKET)
@@ -175,16 +178,31 @@ class WirelessDevBridgeApp(tk.Tk):
             pady=10,
         )
 
+        ttk.Label(frame, text="Auth token").grid(row=1, column=0, sticky="w", padx=(10, 6), pady=(0, 10))
+        ttk.Entry(frame, textvariable=self.auth_token_var, show="*", width=28).grid(
+            row=1,
+            column=1,
+            columnspan=2,
+            sticky="ew",
+            padx=(0, 12),
+            pady=(0, 10),
+        )
+
         quick = ttk.Frame(frame)
-        quick.grid(row=1, column=0, columnspan=8, sticky="ew", padx=10, pady=(0, 10))
+        quick.grid(row=2, column=0, columnspan=8, sticky="ew", padx=10, pady=(0, 10))
         for label, command in (
             ("Ping", lambda: self.send_command("ping")),
             ("Status", lambda: self.send_command("status")),
             ("Self Test", lambda: self.send_command("self_test")),
+            ("Identify", lambda: self.send_command("identify")),
+            ("Diagnostics", lambda: self.send_command("diagnostics")),
             ("Protocol", lambda: self.send_command("protocol")),
             ("RF Config", lambda: self.send_command("rf_get_config")),
+            ("Settings", lambda: self.send_command("settings_get")),
+            ("Save Settings", lambda: self.send_command("settings_save")),
         ):
             self._button(quick, label, command).pack(side="left", padx=(0, 8))
+        self._button(quick, "Export Support Report", self.export_support_report).pack(side="left", padx=(0, 8))
 
         return frame
 
@@ -629,6 +647,82 @@ class WirelessDevBridgeApp(tk.Tk):
     def send_command(self, cmd: str, **params: Any) -> None:
         self._start_command(cmd, params, log=True, refresh_after=True)
 
+    def export_support_report(self) -> None:
+        if self.busy:
+            self._append_log("Command already in progress.")
+            return
+
+        endpoint = self._endpoint()
+        if not endpoint:
+            messagebox.showwarning("Missing endpoint", self._missing_endpoint_message())
+            return
+
+        try:
+            timeout = float(self.timeout_var.get())
+        except ValueError:
+            messagebox.showwarning("Invalid timeout", "Timeout must be a number of seconds.")
+            return
+
+        default_name = f"wireless-dev-bridge-report-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+        path = filedialog.asksaveasfilename(
+            title="Export support report",
+            initialfile=default_name,
+            defaultextension=".json",
+            filetypes=(("JSON reports", "*.json"), ("All files", "*.*")),
+        )
+        if not path:
+            return
+
+        auth_token = self.auth_token_var.get().strip()
+        self._append_log(f"> export support report {path}")
+        self._set_busy(True)
+        worker = threading.Thread(
+            target=self._support_report_worker,
+            args=(self.transport_var.get(), endpoint, timeout, auth_token, path),
+            daemon=True,
+        )
+        worker.start()
+
+    def _support_report_worker(
+        self,
+        transport: str,
+        endpoint: str,
+        timeout: float,
+        auth_token: str,
+        path: str,
+    ) -> None:
+        try:
+            bridge = self._get_client(transport, endpoint, timeout, auth_token)
+            report = {
+                "schema": "wireless-dev-bridge-support-report-v1",
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "source": "desktop-workbench",
+                "host": {
+                    "system": platform.system(),
+                    "release": platform.release(),
+                    "machine": platform.machine(),
+                    "python": platform.python_version(),
+                },
+                "connection": {
+                    "transport": transport,
+                    "endpoint": endpoint,
+                },
+                "responses": {},
+            }
+            for cmd in ("status", "self_test", "diagnostics", "settings_get"):
+                report["responses"][cmd] = bridge.request(cmd, check=False)
+
+            Path(path).write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            self.result_queue.put(("report_saved", path))
+        except BridgeError as exc:
+            self._close_client((transport, endpoint, timeout, auth_token))
+            self.result_queue.put(("error", str(exc)))
+        except Exception as exc:
+            self._close_client((transport, endpoint, timeout, auth_token))
+            self.result_queue.put(("error", f"{type(exc).__name__}: {exc}"))
+        finally:
+            self.result_queue.put(("busy", False))
+
     def start_event_stream(self) -> None:
         if self.event_running:
             return
@@ -651,6 +745,7 @@ class WirelessDevBridgeApp(tk.Tk):
         if transport == TRANSPORT_BLE:
             timeout = max(timeout, 5.0)
 
+        auth_token = self.auth_token_var.get().strip()
         self.event_count = 0
         self.event_packet_count = 0
         self.event_stop = threading.Event()
@@ -661,7 +756,7 @@ class WirelessDevBridgeApp(tk.Tk):
         self._append_event_log(f"> stream {transport} {endpoint}")
         self.event_thread = threading.Thread(
             target=self._event_stream_worker,
-            args=(transport, endpoint, timeout, self.event_stop),
+            args=(transport, endpoint, timeout, auth_token, self.event_stop),
             daemon=True,
         )
         self.event_thread.start()
@@ -681,11 +776,12 @@ class WirelessDevBridgeApp(tk.Tk):
         transport: str,
         endpoint: str,
         timeout: float,
+        auth_token: str,
         stop_event: threading.Event,
     ) -> None:
         bridge = None
         try:
-            bridge = self._make_client(transport, endpoint, timeout)
+            bridge = self._make_client(transport, endpoint, timeout, auth_token)
             self.event_bridge = bridge
             self.result_queue.put(("event_state", f"Streaming {transport} {endpoint}"))
 
@@ -741,13 +837,14 @@ class WirelessDevBridgeApp(tk.Tk):
             messagebox.showwarning("Invalid timeout", "Timeout must be greater than zero.")
             return
 
+        auth_token = self.auth_token_var.get().strip()
         payload = {"cmd": cmd, **{key: value for key, value in params.items() if value is not None}}
         if log:
             self._append_log(f"> {self.transport_var.get()} {endpoint} {json.dumps(payload, separators=(',', ':'))}")
         self._set_busy(True)
         worker = threading.Thread(
             target=self._send_worker,
-            args=(self.transport_var.get(), endpoint, timeout, cmd, params, log, refresh_after),
+            args=(self.transport_var.get(), endpoint, timeout, auth_token, cmd, params, log, refresh_after),
             daemon=True,
         )
         worker.start()
@@ -757,20 +854,21 @@ class WirelessDevBridgeApp(tk.Tk):
         transport: str,
         endpoint: str,
         timeout: float,
+        auth_token: str,
         cmd: str,
         params: dict[str, Any],
         log: bool,
         refresh_after: bool,
     ) -> None:
         try:
-            bridge = self._get_client(transport, endpoint, timeout)
+            bridge = self._get_client(transport, endpoint, timeout, auth_token)
             response = bridge.request(cmd, check=False, **params)
         except BridgeError as exc:
-            self._close_client((transport, endpoint, timeout))
+            self._close_client((transport, endpoint, timeout, auth_token))
             self.result_queue.put(("error", str(exc)))
             return
         except Exception as exc:
-            self._close_client((transport, endpoint, timeout))
+            self._close_client((transport, endpoint, timeout, auth_token))
             self.result_queue.put(("error", f"{type(exc).__name__}: {exc}"))
             return
         finally:
@@ -778,25 +876,26 @@ class WirelessDevBridgeApp(tk.Tk):
 
         self.result_queue.put(("response", (response, log, refresh_after)))
 
-    def _get_client(self, transport: str, endpoint: str, timeout: float) -> WirelessDevBridge:
-        key = (transport, endpoint, timeout)
+    def _get_client(self, transport: str, endpoint: str, timeout: float, auth_token: str) -> WirelessDevBridge:
+        key = (transport, endpoint, timeout, auth_token)
         bridge = self.active_bridges.get(key)
         if bridge is not None:
             return bridge
 
-        bridge = self._make_client(transport, endpoint, timeout)
+        bridge = self._make_client(transport, endpoint, timeout, auth_token)
         self.active_bridges[key] = bridge
         return bridge
 
-    def _make_client(self, transport: str, endpoint: str, timeout: float) -> WirelessDevBridge:
+    def _make_client(self, transport: str, endpoint: str, timeout: float, auth_token: str = "") -> WirelessDevBridge:
+        token = auth_token or None
         if transport == TRANSPORT_SERIAL:
-            return WirelessDevBridge.serial(endpoint, baudrate=BAUD_RATE, timeout=timeout)
+            return WirelessDevBridge.serial(endpoint, baudrate=BAUD_RATE, timeout=timeout, auth_token=token)
         if transport == TRANSPORT_HTTP:
-            return WirelessDevBridge.http(endpoint, timeout=timeout)
+            return WirelessDevBridge.http(endpoint, timeout=timeout, auth_token=token)
         if transport == TRANSPORT_WEBSOCKET:
-            return WirelessDevBridge.websocket(endpoint, timeout=timeout)
+            return WirelessDevBridge.websocket(endpoint, timeout=timeout, auth_token=token)
         if transport == TRANSPORT_BLE:
-            return WirelessDevBridge.ble(endpoint, timeout=timeout)
+            return WirelessDevBridge.ble(endpoint, timeout=timeout, auth_token=token)
         raise ValueError(f"unsupported transport: {transport}")
 
     def _endpoint(self) -> str:
@@ -823,7 +922,7 @@ class WirelessDevBridgeApp(tk.Tk):
         if log:
             self._append_log("Disconnected all open devices.")
 
-    def _close_client(self, key: tuple[str, str, float]) -> None:
+    def _close_client(self, key: tuple[str, str, float, str]) -> None:
         bridge = self.active_bridges.pop(key, None)
         if bridge is None:
             return
@@ -917,6 +1016,9 @@ class WirelessDevBridgeApp(tk.Tk):
             elif kind == "response":
                 response, log, refresh_after = message
                 self._handle_response(response, log=log, refresh_after=refresh_after)
+            elif kind == "report_saved":
+                self._append_log(f"< support report saved: {message}")
+                messagebox.showinfo("Support report exported", f"Report saved to:\n{message}")
             elif kind == "event_state":
                 self.event_status_var.set(str(message))
                 self._append_event_log(f"* {message}")
@@ -952,6 +1054,18 @@ class WirelessDevBridgeApp(tk.Tk):
 
         if cmd in {"status", "self_test"}:
             self._update_overview_from_status(data, self_test=cmd == "self_test")
+        elif cmd == "diagnostics":
+            status = data.get("status") if isinstance(data.get("status"), dict) else {}
+            if status:
+                self._update_overview_from_status(status)
+        elif cmd in {"settings_get", "settings_set", "settings_save", "settings_reset"}:
+            effective = data.get("effective") if isinstance(data.get("effective"), dict) else {}
+            rf = effective.get("rf") if isinstance(effective.get("rf"), dict) else {}
+            bridge = effective.get("bridge") if isinstance(effective.get("bridge"), dict) else {}
+            if rf:
+                self._update_rf_controls(rf, update_form=not self.rf_config_dirty)
+            if bridge:
+                self._update_bridge_controls(bridge)
         elif cmd in {"rf_config", "rf_get_config", "rf_set_address"}:
             self._update_rf_controls(data, update_form=cmd in {"rf_config", "rf_get_config"})
             if cmd in {"rf_config", "rf_get_config"}:

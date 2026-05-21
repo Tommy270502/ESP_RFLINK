@@ -49,3 +49,44 @@ def test_bridge_help_mentions_rf_to_ble(capsys):
 
     assert exc.value.code == 0
     assert "rf-to-ble" in capsys.readouterr().out
+
+
+def test_run_command_maps_identify():
+    parser = build_parser()
+    args = parser.parse_args(["identify"])
+    bridge = FakeBridge()
+
+    run_command(bridge, args)
+
+    assert bridge.calls == [("identify", False, {})]
+
+
+def test_run_command_maps_settings_set_json():
+    parser = build_parser()
+    args = parser.parse_args(["settings-set", "--json", '{"rf":{"channel":42},"security":{"auth_required":true}}'])
+    bridge = FakeBridge()
+
+    run_command(bridge, args)
+
+    assert bridge.calls == [
+        (
+            "settings_set",
+            False,
+            {
+                "rf": {"channel": 42},
+                "bridge": None,
+                "device": None,
+                "security": {"auth_required": True},
+            },
+        )
+    ]
+
+
+def test_discover_does_not_require_bridge():
+    parser = build_parser()
+    args = parser.parse_args(["discover"])
+
+    response = run_command(None, args)
+
+    assert response["ok"] is True
+    assert response["cmd"] == "discover"

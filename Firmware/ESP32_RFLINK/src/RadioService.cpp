@@ -113,9 +113,14 @@ bool RadioService::flushTx() {
   return true;
 }
 
+void RadioService::loadAddress(uint8_t* target, const uint8_t* address, size_t len) {
+  if (len != Config::RF_ADDRESS_WIDTH) return;
+  memcpy(target, address, Config::RF_ADDRESS_WIDTH);
+}
+
 bool RadioService::setAddress(uint8_t* target, const uint8_t* address, size_t len) {
-  if (!rfCfg.initialized) return false;
   if (len != Config::RF_ADDRESS_WIDTH) return false;
+  if (!rfCfg.initialized) return false;
 
   memcpy(target, address, Config::RF_ADDRESS_WIDTH);
   return applyConfig();
@@ -127,6 +132,26 @@ bool RadioService::setRxAddress(const uint8_t* address, size_t len) {
 
 bool RadioService::setTxAddress(const uint8_t* address, size_t len) {
   return setAddress(txAddress, address, len);
+}
+
+void RadioService::loadRxAddress(const uint8_t* address, size_t len) {
+  loadAddress(rxAddress, address, len);
+}
+
+void RadioService::loadTxAddress(const uint8_t* address, size_t len) {
+  loadAddress(txAddress, address, len);
+}
+
+bool RadioService::copyRxAddress(uint8_t* out, size_t len) const {
+  if (len != Config::RF_ADDRESS_WIDTH) return false;
+  memcpy(out, rxAddress, Config::RF_ADDRESS_WIDTH);
+  return true;
+}
+
+bool RadioService::copyTxAddress(uint8_t* out, size_t len) const {
+  if (len != Config::RF_ADDRESS_WIDTH) return false;
+  memcpy(out, txAddress, Config::RF_ADDRESS_WIDTH);
+  return true;
 }
 
 bool RadioService::isChipConnected() {

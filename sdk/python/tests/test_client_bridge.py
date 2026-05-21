@@ -58,3 +58,35 @@ def test_bridge_rejects_non_bool_modes():
 
     with pytest.raises(ValueError, match="rf_to_ble"):
         dev.bridge(rf_to_ble="yes")
+
+
+def test_protocol_11_helpers_send_expected_commands():
+    transport = FakeTransport()
+    dev = WirelessDevBridge(transport)
+
+    dev.identify()
+    dev.diagnostics()
+    dev.settings_get()
+    dev.settings_set(rf={"channel": 42}, security={"auth_required": True})
+    dev.settings_save()
+    dev.settings_reset()
+
+    assert [payload["cmd"] for payload in transport.payloads] == [
+        "identify",
+        "diagnostics",
+        "settings_get",
+        "settings_set",
+        "settings_save",
+        "settings_reset",
+    ]
+    assert transport.payloads[3]["rf"] == {"channel": 42}
+    assert transport.payloads[3]["security"] == {"auth_required": True}
+
+
+def test_auth_token_is_added_to_non_http_command_payloads():
+    transport = FakeTransport()
+    dev = WirelessDevBridge(transport, auth_token="secret")
+
+    dev.status()
+
+    assert transport.payloads[-1]["auth"] == "secret"
