@@ -12,8 +12,8 @@ Start here:
 
 Host tool documentation lives with the tool:
 
-- [Desktop Workbench](../application/README.md)
-- [Python SDK](../sdk/python/README.md)
+- [Desktop Workbench](../application/desktop-workbench.md)
+- [Python SDK](../sdk/python/python-sdk-guide.md)
 
 Validated V1 workflows:
 

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "wireless-dev-bridge"
 version = "0.1.0"
 description = "Host SDK for the Wireless Dev Bridge ESP32-S3/nRF24 developer tool"
-readme = "README.md"
+readme = "python-sdk-guide.md"
 requires-python = ">=3.9"
 authors = [
   { name = "Wireless Dev Bridge" }

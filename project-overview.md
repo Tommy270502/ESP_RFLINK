@@ -113,14 +113,14 @@ To prove wireless event streaming, use the **Live Events** tab:
 
 ## Documentation
 
-- [Documentation Index](docs/README.md)
+- [Documentation Index](docs/documentation-index.md)
 - [Getting Started](docs/getting-started.md)
 - [API Reference](docs/api-reference.md)
 - [Firmware Guide](docs/firmware.md)
 - [Hardware Guide](docs/hardware.md)
 - [Release Checklist](docs/release-checklist.md)
-- [Desktop Workbench](application/README.md)
-- [Python SDK](sdk/python/README.md)
+- [Desktop Workbench](application/desktop-workbench.md)
+- [Python SDK](sdk/python/python-sdk-guide.md)
 
 ## V1 Boundaries
 

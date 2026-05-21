@@ -4,7 +4,7 @@ Use this checklist before publishing an external developer release.
 
 ## Repository
 
-- Root README explains the product, quick start, repo layout, interfaces, and V1 boundaries.
+- [Project overview](../project-overview.md) explains the product, quick start, repo layout, interfaces, and V1 boundaries.
 - Firmware, application, SDK, hardware, manufacturing, and docs are discoverable from the repo root.
 - Generated caches, local KiCad files, old backup archives, Python bytecode, and egg-info files are not tracked.
 - No user-local absolute paths remain in tracked source files.

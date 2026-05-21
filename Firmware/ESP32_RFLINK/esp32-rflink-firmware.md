@@ -2,7 +2,7 @@
 
 Firmware for a USB-C multi-protocol wireless development interface based on an ESP32-S3-WROOM-1 and nRF24L01+.
 
-For the full product launch package, start at the repository root `README.md`.
+For the full product launch package, start at the repository root `project-overview.md`.
 
 ## Target
 
