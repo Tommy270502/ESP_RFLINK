@@ -28,19 +28,24 @@ class BaseTransport:
 
 
 class HttpTransport(BaseTransport):
-    def __init__(self, host: str = "192.168.4.1", timeout: float = 3.0):
+    def __init__(self, host: str = "192.168.4.1", timeout: float = 3.0, auth_token: Optional[str] = None):
         if host.startswith("http://") or host.startswith("https://"):
             self.base_url = host.rstrip("/")
         else:
             self.base_url = f"http://{host.strip('/')}"
         self.timeout = timeout
+        self.auth_token = auth_token
 
     def command(self, payload: JsonDict) -> JsonDict:
         body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+        headers = {"Content-Type": "application/json"}
+        if self.auth_token:
+            headers["X-WDB-Token"] = self.auth_token
+
         request = urllib.request.Request(
             f"{self.base_url}/api/command",
             data=body,
-            headers={"Content-Type": "application/json"},
+            headers=headers,
             method="POST",
         )
 

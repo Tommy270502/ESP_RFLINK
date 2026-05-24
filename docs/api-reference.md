@@ -56,6 +56,12 @@ Errors:
 | `rf_flush_tx` | Flush nRF24 TX FIFO. |
 | `rf_set_address` | Set RX and/or TX pipe addresses. |
 | `bridge` | Enable or disable RF-to-Wi-Fi and RF-to-BLE event forwarding. |
+| `settings_get` | Read effective runtime settings and persisted-settings state. |
+| `settings_set` | Apply partial RF, bridge, device, or security settings. |
+| `settings_save` | Persist current settings to NVS. |
+| `settings_reset` | Clear persisted settings and restore defaults. |
+| `diagnostics` | Return self-test, status, settings, reset reason, chip, heap, counters, and last error data. |
+| `identify` | Blink the LED and return identity fields for matching a physical dongle. |
 
 ## Status Data
 
@@ -72,6 +78,11 @@ Errors:
 | `ble.connected` | Whether a BLE central is connected. |
 | `stats.rf_tx` / `stats.rf_rx` | RF packets transmitted and received. |
 | `stats.rf_tx_fail` | RF send failures, including ACK timeouts. |
+| `device.id` | MAC-derived identity used for support and physical device matching. |
+| `storage.dirty` | Runtime settings differ from saved NVS settings. |
+| `security.auth_required` | Whether non-USB command surfaces require a token. |
+| `reset_reason` | Last reset reason reported by the ESP32 runtime. |
+| `last_error` | Last command error object, or `null` when no command error has been recorded. |
 
 ## Command Examples
 
@@ -95,6 +106,35 @@ Errors:
 {"cmd":"bridge","rf_to_wifi":true,"rf_to_ble":true}
 ```
 
+```json
+{"cmd":"settings_set","rf":{"channel":76,"datarate":"1mbps","power":"low","rx":"NODE1","tx":"NODE2","address_format":"ascii"},"bridge":{"rf_to_wifi":true,"rf_to_ble":true}}
+```
+
+```json
+{"cmd":"settings_save"}
+```
+
+```json
+{"cmd":"diagnostics"}
+```
+
+```json
+{"cmd":"identify"}
+```
+
+## Settings And Auth
+
+Protocol `1.1` adds NVS-backed settings. `settings_set` accepts partial objects:
+
+| Object | Fields |
+| --- | --- |
+| `rf` | `channel`, `datarate`, `power`, `auto_ack`, `rx`, `tx`, `address_format` |
+| `bridge` | `rf_to_wifi`, `rf_to_ble` |
+| `device` | `name`, `ap_ssid`, `ap_pass`, `ble_name` |
+| `security` | `auth_required`, `auth_token` |
+
+HTTP uses the `X-WDB-Token` header when auth is required. WebSocket and BLE use top-level JSON field `auth`. USB serial remains the trusted setup path.
+
 ## HTTP Routes
 
 | Route | Method | Purpose |
@@ -110,6 +150,8 @@ Errors:
 | `/api/rf/flush_rx` | `POST` | Flush RX FIFO. |
 | `/api/rf/flush_tx` | `POST` | Flush TX FIFO. |
 | `/api/bridge` | `POST` | Set bridge state. |
+
+The generic `/api/command` route is the canonical route for protocol `1.1` commands such as `settings_get`, `settings_set`, `diagnostics`, and `identify`.
 
 ## RF Packet Event
 
@@ -134,7 +176,7 @@ RF packet events are emitted on USB serial, WebSocket when `rf_to_wifi` is enabl
   "type": "status",
   "data": {
     "fw": "0.1.0-v1",
-    "protocol": "1.0",
+    "protocol": "1.1",
     "role": "node1",
     "uptime_ms": 12345,
     "radio": {},

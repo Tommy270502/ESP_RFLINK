@@ -2,3 +2,5 @@
 
 RadioConfig rfCfg;
 PacketStats stats;
+String lastErrorCode;
+String lastErrorMessage;

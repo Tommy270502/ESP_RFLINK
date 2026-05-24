@@ -9,24 +9,47 @@ Payload = Union[bytes, bytearray, memoryview]
 
 
 class WirelessDevBridge:
-    def __init__(self, transport: BaseTransport):
+    def __init__(self, transport: BaseTransport, auth_token: Optional[str] = None):
         self.transport = transport
+        self.auth_token = auth_token
 
     @classmethod
-    def http(cls, host: str = "192.168.4.1", timeout: float = 3.0) -> "WirelessDevBridge":
-        return cls(HttpTransport(host=host, timeout=timeout))
+    def http(
+        cls,
+        host: str = "192.168.4.1",
+        timeout: float = 3.0,
+        auth_token: Optional[str] = None,
+    ) -> "WirelessDevBridge":
+        return cls(HttpTransport(host=host, timeout=timeout, auth_token=auth_token), auth_token=auth_token)
 
     @classmethod
-    def serial(cls, port: str, baudrate: int = 115200, timeout: float = 2.0) -> "WirelessDevBridge":
-        return cls(SerialTransport(port=port, baudrate=baudrate, timeout=timeout))
+    def serial(
+        cls,
+        port: str,
+        baudrate: int = 115200,
+        timeout: float = 2.0,
+        auth_token: Optional[str] = None,
+    ) -> "WirelessDevBridge":
+        return cls(SerialTransport(port=port, baudrate=baudrate, timeout=timeout), auth_token=auth_token)
 
     @classmethod
-    def websocket(cls, host: str = "192.168.4.1", port: int = 81, timeout: float = 3.0) -> "WirelessDevBridge":
-        return cls(WebSocketTransport(host=host, port=port, timeout=timeout))
+    def websocket(
+        cls,
+        host: str = "192.168.4.1",
+        port: int = 81,
+        timeout: float = 3.0,
+        auth_token: Optional[str] = None,
+    ) -> "WirelessDevBridge":
+        return cls(WebSocketTransport(host=host, port=port, timeout=timeout), auth_token=auth_token)
 
     @classmethod
-    def ble(cls, device: str = "WirelessDev-Node1", timeout: float = 5.0) -> "WirelessDevBridge":
-        return cls(BleTransport(device=device, timeout=timeout))
+    def ble(
+        cls,
+        device: str = "WirelessDev-Node1",
+        timeout: float = 5.0,
+        auth_token: Optional[str] = None,
+    ) -> "WirelessDevBridge":
+        return cls(BleTransport(device=device, timeout=timeout), auth_token=auth_token)
 
     def close(self) -> None:
         self.transport.close()
@@ -34,6 +57,8 @@ class WirelessDevBridge:
     def request(self, cmd: str, check: bool = True, **params: Any) -> Dict[str, Any]:
         payload = {"cmd": cmd}
         payload.update({key: value for key, value in params.items() if value is not None})
+        if self.auth_token and not isinstance(self.transport, HttpTransport):
+            payload.setdefault("auth", self.auth_token)
 
         response = self.transport.command(payload)
         self._validate_response(response)
@@ -121,6 +146,50 @@ class WirelessDevBridge:
         self._validate_optional_bool("rf_to_wifi", rf_to_wifi)
         self._validate_optional_bool("rf_to_ble", rf_to_ble)
         return self.command("bridge", rf_to_wifi=rf_to_wifi, rf_to_ble=rf_to_ble)
+
+    def settings_get(self) -> Dict[str, Any]:
+        return self.command("settings_get")
+
+    def settings_set(
+        self,
+        rf: Optional[Dict[str, Any]] = None,
+        bridge: Optional[Dict[str, Any]] = None,
+        device: Optional[Dict[str, Any]] = None,
+        security: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        return self.command("settings_set", rf=rf, bridge=bridge, device=device, security=security)
+
+    def settings_save(self) -> Dict[str, Any]:
+        return self.command("settings_save")
+
+    def settings_reset(self) -> Dict[str, Any]:
+        return self.command("settings_reset")
+
+    def diagnostics(self) -> Dict[str, Any]:
+        return self.command("diagnostics")
+
+    def identify(self) -> Dict[str, Any]:
+        return self.command("identify")
+
+    def status_model(self):
+        from .models import StatusModel
+
+        return StatusModel.from_data(self.status())
+
+    def rf_config_model(self):
+        from .models import RfConfigModel
+
+        return RfConfigModel.from_data(self.rf_get_config())
+
+    def settings_model(self):
+        from .models import SettingsModel
+
+        return SettingsModel.from_data(self.settings_get())
+
+    def diagnostics_model(self):
+        from .models import DiagnosticsModel
+
+        return DiagnosticsModel.from_data(self.diagnostics())
 
     def read_event(self, timeout: Optional[float] = None):
         return self.transport.read_event(timeout=timeout)

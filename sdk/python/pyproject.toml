@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "wireless-dev-bridge"
 version = "0.1.0"
 description = "Host SDK for the Wireless Dev Bridge ESP32-S3/nRF24 developer tool"
-readme = "README.md"
+readme = "python-sdk-guide.md"
 requires-python = ">=3.9"
 authors = [
   { name = "Wireless Dev Bridge" }
@@ -18,8 +18,9 @@ serial = ["pyserial>=3.5"]
 websocket = ["websocket-client>=1.7"]
 ble = ["bleak>=0.22"]
 mqtt = ["paho-mqtt>=2.0"]
+flash = ["esptool>=4.7"]
 test = ["pytest>=8.0"]
-all = ["pyserial>=3.5", "websocket-client>=1.7", "bleak>=0.22", "paho-mqtt>=2.0"]
+all = ["pyserial>=3.5", "websocket-client>=1.7", "bleak>=0.22", "paho-mqtt>=2.0", "esptool>=4.7"]
 
 [project.scripts]
 wdb = "wireless_dev_bridge.cli:main"

@@ -14,12 +14,17 @@ public:
   bool flushTx();
   bool setRxAddress(const uint8_t* address, size_t len);
   bool setTxAddress(const uint8_t* address, size_t len);
+  void loadRxAddress(const uint8_t* address, size_t len);
+  void loadTxAddress(const uint8_t* address, size_t len);
+  bool copyRxAddress(uint8_t* out, size_t len) const;
+  bool copyTxAddress(uint8_t* out, size_t len) const;
   bool isChipConnected();
   void fillConfig(JsonObject data);
   void poll();
   void setPacketCallback(void (*callback)(const uint8_t* data, size_t len));
 
 private:
+  void loadAddress(uint8_t* target, const uint8_t* address, size_t len);
   bool setAddress(uint8_t* target, const uint8_t* address, size_t len);
   void (*onPacket)(const uint8_t* data, size_t len) = nullptr;
 };

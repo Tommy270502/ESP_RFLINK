@@ -4,6 +4,7 @@
 #include "Config.h"
 #include "Utils.h"
 #include "RadioService.h"
+#include "SettingsService.h"
 #include "BridgeService.h"
 #include "BleService.h"
 #include "CommandService.h"
@@ -26,10 +27,11 @@ static void emitBootMessage(bool rfOk) {
   data["uptime_ms"] = millis();
   data["radio_initialized"] = rfOk;
   data["radio_chip_connected"] = radioService.isChipConnected();
-  data["ap_ssid"] = Config::AP_SSID;
+  data["ap_ssid"] = settingsService.apSsid();
   data["ap_ip"] = WiFi.softAPIP().toString();
   data["ble_enabled"] = bleService.enabled();
-  data["ble_name"] = Config::BLE_NAME;
+  data["ble_name"] = settingsService.bleName();
+  data["settings_loaded"] = settingsService.loadedFromNvs();
   doc["error"] = nullptr;
   sendJsonSerial(doc);
 }
@@ -41,6 +43,7 @@ void setup() {
   Serial.begin(115200);
   delay(500);
 
+  settingsService.begin();
   bool rfOk = radioService.begin();
   radioService.setPacketCallback(onRfPacket);
 

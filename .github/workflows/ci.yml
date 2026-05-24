@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install SDK test dependencies
+        run: |
+          cd sdk/python
+          python -m pip install -e ".[test]"
+      - name: Run SDK tests
+        run: |
+          cd sdk/python
+          python -m pytest
+      - name: Compile desktop workbench
+        run: python -m py_compile application/main.py
+      - name: Check docs links
+        run: python scripts/check_docs_links.py
+
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install PlatformIO
+        run: python -m pip install platformio
+      - name: Build node firmware
+        run: |
+          cd Firmware/ESP32_RFLINK
+          pio run -e node1 -e node2
+
+  release-package:
+    runs-on: ubuntu-latest
+    needs: [python, firmware]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build release package skeleton
+        run: python scripts/package_release.py --output dist/release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wireless-dev-bridge-release-skeleton
+          path: dist/release

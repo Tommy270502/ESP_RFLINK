@@ -145,6 +145,8 @@ Use this when you want a fast smoke check without writing Python code.
 
 ```bash
 wdb --serial COM5 self-test
+wdb --serial COM5 identify
+wdb --serial COM5 diagnostics
 wdb --host 192.168.4.1 status
 wdb --ws 192.168.4.1 bridge rf-to-wifi on
 wdb --ble WirelessDev-Node1 bridge rf-to-ble on
@@ -185,6 +187,25 @@ python examples/rf_ping.py --node1-serial COM8 --node2-serial COM11
 
 All examples support `--help`.
 
+## Product Workflows
+
+```bash
+wdb discover
+wdb --serial COM5 identify
+wdb --serial COM5 diagnostics
+wdb --serial COM5 settings-set --json '{"rf":{"channel":76,"datarate":"1mbps"},"bridge":{"rf_to_wifi":true,"rf_to_ble":true}}'
+wdb --serial COM5 settings-save
+wdb pair-test --node1-serial COM5 --node2-serial COM6
+wdb --serial COM5 report --output reports/node1-report.json
+```
+
+Optional auth protects HTTP, WebSocket, and BLE command surfaces while leaving USB serial available for trusted setup:
+
+```bash
+wdb --serial COM5 setup --auth-required --device-auth-token lab-secret --save
+wdb --host 192.168.4.1 --auth-token lab-secret diagnostics
+```
+
 ## Two-Dongle Production Demo
 
 Use this when presenting or validating a packaged two-dongle kit.
@@ -219,6 +240,8 @@ wdb --serial COM5 rf-config --channel 76 --datarate 1mbps --power low
 wdb --ws 192.168.4.1 bridge rf-to-wifi on
 wdb --ble WirelessDev-Node1 bridge rf-to-ble on
 wdb --ble WirelessDev-Node1 rf-send 1234 --require-ack
+wdb --serial COM5 settings-get
+wdb --serial COM5 report --output reports/node1-report.json
 ```
 
 The legacy bridge form still controls RF-to-Wi-Fi:

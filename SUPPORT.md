@@ -10,3 +10,11 @@ For V1 developer support, include:
 - RF config: channel, datarate, power, auto-ACK, RX address, and TX address.
 
 For hardware issues, include clear photos of the board, power symptoms, USB enumeration behavior, and whether the KiCad/Gerber release was modified.
+
+Preferred report command:
+
+```bash
+wdb --serial <port> report --output wireless-dev-bridge-report.json
+```
+
+The desktop workbench can export the same support report from the selected connection.
