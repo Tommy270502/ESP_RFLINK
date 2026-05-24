@@ -27,9 +27,11 @@ Use this checklist before publishing an external developer release.
 - CLI works over serial, HTTP, WebSocket, and BLE where hardware is available.
 - Examples support `--help` and document required optional dependencies.
 
-## Desktop Workbench
+## Local Web Workbench
 
+- `python -m pip install -r application/requirements.txt` succeeds in a fresh virtual environment.
 - `python application/main.py` starts from the repository root.
+- `GET http://127.0.0.1:5173/health` returns `{"ok": true}` while the workbench is running.
 - The workbench can run `status`, `self_test`, RF config, RF send, address, and bridge commands through the shared SDK client.
 - The workbench keeps separate open connections per endpoint so switching between two serial ports does not reset boards during runtime RF testing.
 - The Live Events tab receives WebSocket packet events and BLE packet events where hardware is available.

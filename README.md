@@ -9,11 +9,11 @@ This repository is organized as a V1 external developer launch package: firmware
 ## What You Can Do
 
 - Bridge nRF24 packets to USB serial, Wi-Fi/WebSocket, or BLE notifications.
-- Send and receive 32-byte nRF24 payloads from scripts, the CLI, the desktop workbench, or the browser UI.
+- Send and receive 32-byte nRF24 payloads from scripts, the CLI, the local web workbench, or the firmware browser UI.
 - Configure RF channel, datarate, power, auto-ACK, listen state, and 5-byte pipe addresses.
 - Watch live RF packet events over WebSocket or BLE while controlling devices over USB serial.
 - Run two-dongle RF ping and production-style self-test workflows.
-- Use the Python SDK, CLI, or desktop workbench without writing embedded code.
+- Use the Python SDK, CLI, or local web workbench without writing embedded code.
 
 ## Quick Start
 
@@ -39,14 +39,17 @@ wdb --serial COM5 self-test
 wdb --serial COM5 status
 ```
 
-Launch the desktop workbench:
+Launch the local web workbench:
 
 ```bash
 # from the repository root
+python -m pip install -r application/requirements.txt
 python application/main.py
 ```
 
-Use the desktop workbench to configure both node roles, send ACK-required RF packets in both directions, watch counters, and stream RF packet events over WebSocket or BLE.
+Use the local web workbench at `http://127.0.0.1:5173` to configure both node
+roles, send ACK-required RF packets in both directions, watch counters, and
+stream RF packet events over WebSocket or BLE.
 
 Run the two-dongle production demo with flashing and a JSON report:
 
@@ -71,7 +74,7 @@ http://192.168.4.1
 | Path | Purpose |
 | --- | --- |
 | `Firmware/ESP32_RFLINK` | PlatformIO firmware for the ESP32-S3 dongle. |
-| `application` | Tkinter desktop workbench for the shared command protocol. |
+| `application` | Local FastAPI/browser workbench for the shared command protocol. |
 | `sdk/python` | Python SDK, CLI, examples, and hardware-free tests. |
 | `hardware/kicad` | KiCad schematic and PCB source. |
 | `manufacturing/gerbers` | Current V1 Gerber/drill export. |
@@ -87,7 +90,7 @@ http://192.168.4.1
 | WebSocket JSON | `ws://192.168.4.1:81/` | Live packet monitor and RF event streaming. |
 | BLE GATT | `WirelessDev-Node1` or `WirelessDev-Node2` | Mobile, field, and BLE-host workflows. |
 
-The desktop workbench and Python SDK can use these same transports from the host side.
+The local web workbench and Python SDK can use these same transports from the host side.
 
 All transports share the same command response envelope:
 
@@ -104,7 +107,7 @@ For a two-dongle RF bench, flash one dongle as `node1` and one as `node2`. Keep 
 | `node1` | `NODE1` | `NODE2` |
 | `node2` | `NODE2` | `NODE1` |
 
-In the desktop workbench, use USB serial for reliable command control. The app keeps open connections per endpoint so switching between COM ports does not reset the boards. `status` counters should show `rf_tx` increasing on the sender and `rf_rx` increasing on the peer.
+In the local web workbench, use USB serial for reliable command control. The app keeps open connections per endpoint so switching between COM ports does not reset the boards. `status` counters should show `rf_tx` increasing on the sender and `rf_rx` increasing on the peer.
 
 To prove wireless event streaming, use the **Live Events** tab:
 
@@ -119,7 +122,7 @@ To prove wireless event streaming, use the **Live Events** tab:
 - [Firmware Guide](docs/firmware.md)
 - [Hardware Guide](docs/hardware.md)
 - [Release Checklist](docs/release-checklist.md)
-- [Desktop Workbench](application/README.md)
+- [Local Web Workbench](application/README.md)
 - [Python SDK](sdk/python/README.md)
 
 ## V1 Boundaries

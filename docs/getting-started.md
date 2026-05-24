@@ -55,14 +55,19 @@ python -m pip install -e ".[all]"
 
 HTTP-only SDK usage has no runtime dependencies, but `.[all]` installs the optional serial, WebSocket, BLE, and MQTT transports used by the examples.
 
-The desktop workbench uses the same SDK and optional transport packages:
+The local web workbench uses the same SDK and optional transport packages, plus
+FastAPI/Uvicorn for the local browser UI:
 
 ```bash
 cd ../..
+python -m pip install -r application/requirements.txt
 python application/main.py
 ```
 
-The workbench is the easiest way to validate a bench interactively. It keeps USB serial connections open per COM port, refreshes `status`, edits RF config, sends packets, and streams WebSocket/BLE packet events.
+Open `http://127.0.0.1:5173` if the browser does not open automatically. The
+workbench is the easiest way to validate a bench interactively. It keeps USB
+serial connections open per COM port, refreshes `status`, edits RF config,
+sends packets, and streams WebSocket/BLE packet events.
 
 ## 4. Run A Smoke Test
 
@@ -115,7 +120,7 @@ python examples/rf_ping.py --node1-serial COM5 --node2-serial COM6
 
 The test verifies role, radio health, RF config, complementary addresses, and ACK-required traffic in both directions.
 
-Manual two-dongle validation in the desktop workbench:
+Manual two-dongle validation in the local web workbench:
 
 1. Select the node 1 COM port and confirm RX `NODE1`, TX `NODE2`.
 2. Select the node 2 COM port and confirm RX `NODE2`, TX `NODE1`.
@@ -144,7 +149,7 @@ Monitor RF packets over WebSocket:
 python examples/packet_monitor.py --ws 192.168.4.1 --count 10
 ```
 
-Or use the desktop workbench **Live Events** tab, choose `WebSocket`, stream from `192.168.4.1`, and send RF from the peer dongle.
+Or use the local web workbench **Live Events** tab, choose `WebSocket`, stream from `192.168.4.1`, and send RF from the peer dongle.
 
 Bridge RF packet events to BLE:
 
@@ -153,7 +158,7 @@ wdb --ble WirelessDev-Node1 bridge rf-to-ble on
 python examples/packet_monitor.py --ble WirelessDev-Node1 --count 10
 ```
 
-Or use the desktop workbench **Live Events** tab, choose `BLE`, stream from `WirelessDev-Node1` or `WirelessDev-Node2`, and send RF from the peer dongle.
+Or use the local web workbench **Live Events** tab, choose `BLE`, stream from `WirelessDev-Node1` or `WirelessDev-Node2`, and send RF from the peer dongle.
 
 Bridge RF packet events to MQTT:
 

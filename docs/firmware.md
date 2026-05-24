@@ -98,4 +98,4 @@ For hardware validation, flash one `node1` and one `node2`, then run:
 python examples/rf_ping.py --node1-serial COM5 --node2-serial COM6
 ```
 
-The desktop workbench can run the same validation manually: keep both serial ports open, apply matching RF config on both nodes, send ACK-required packets in both directions, and watch `rf_tx`/`rf_rx` counters plus WebSocket/BLE packet events.
+The local web workbench can run the same validation manually: keep both serial ports open, apply matching RF config on both nodes, send ACK-required packets in both directions, and watch `rf_tx`/`rf_rx` counters plus WebSocket/BLE packet events.

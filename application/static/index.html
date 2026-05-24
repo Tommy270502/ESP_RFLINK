@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wireless Dev Bridge Workbench</title>
+<style>
+:root {
+  --bg: #131518;
+  --surface: #1c1f26;
+  --surface2: #242830;
+  --border: #2e3340;
+  --border2: #3a4152;
+  --text: #dce3ed;
+  --text-muted: #6b7585;
+  --accent: #4f8ef7;
+  --accent-hover: #6ba3ff;
+  --green: #34d399;
+  --amber: #fbbf24;
+  --red: #f87171;
+  --mono: "Consolas", "Menlo", monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --radius: 5px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; }
+#app { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; min-height: 100vh; }
+
+/* ── Shared ── */
+label { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+input, select, textarea {
+  background: var(--bg); border: 1px solid var(--border2); border-radius: var(--radius);
+  color: var(--text); font-family: var(--sans); font-size: 13px; padding: 5px 8px;
+  outline: none; transition: border-color .15s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+input[type=number] { -moz-appearance: textfield; }
+input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; }
+select option { background: var(--surface2); }
+
+button {
+  background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius);
+  color: var(--text); cursor: pointer; font-size: 12px; padding: 5px 11px;
+  transition: background .15s, border-color .15s; white-space: nowrap;
+}
+button:hover:not(:disabled) { background: var(--border); border-color: var(--border2); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+button.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+button.danger { border-color: #f87171; color: var(--red); }
+button.danger:hover:not(:disabled) { background: #2a1818; }
+button:disabled { opacity: .4; cursor: not-allowed; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 10px 14px; }
+.card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: 10px; }
+
+.chip {
+  display: inline-block; border-radius: 100px; font-size: 11px; font-weight: 600;
+  padding: 2px 8px; background: var(--surface2); border: 1px solid var(--border2);
+}
+.chip.ok { background: #0d2e22; border-color: #1a5c3a; color: var(--green); }
+.chip.warn { background: #2e2208; border-color: #5c3f0a; color: var(--amber); }
+.chip.err { background: #2e0d0d; border-color: #5c1a1a; color: var(--red); }
+.chip.blue { background: #0d1e3a; border-color: #1a3a6e; color: var(--accent); }
+
+.field-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.field-col { display: flex; flex-direction: column; gap: 4px; }
+.hint { color: var(--text-muted); font-size: 11px; margin-top: 6px; line-height: 1.5; }
+.error-msg { color: var(--red); font-size: 11px; margin-top: 4px; }
+
+/* ── Connection bar ── */
+#conn-bar { display: flex; flex-direction: column; gap: 8px; }
+#conn-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#conn-top .sep { width: 1px; height: 22px; background: var(--border2); flex-shrink: 0; }
+#conn-top label { white-space: nowrap; }
+#endpoint-wrap { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 180px; max-width: 340px; }
+#endpoint-wrap select, #endpoint-wrap input { flex: 1; min-width: 0; }
+#quick-cmds { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ── Overview ── */
+#overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px 10px;
+}
+.ov-item { display: flex; flex-direction: column; gap: 2px; }
+.ov-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
+.ov-value { font-family: var(--mono); font-size: 12px; color: var(--text); }
+
+/* ── Tabs ── */
+#workspace { display: flex; flex-direction: column; gap: 0; }
+#tab-bar { display: flex; gap: 0; border-bottom: 1px solid var(--border); padding: 0 2px; }
+.tab-btn {
+  background: none; border: none; border-bottom: 2px solid transparent; border-radius: 0;
+  color: var(--text-muted); cursor: pointer; font-size: 12px; font-weight: 500;
+  padding: 8px 14px; transition: color .15s, border-color .15s;
+}
+.tab-btn:hover { color: var(--text); background: none; }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-panel { display: none; padding: 14px; }
+.tab-panel.active { display: block; }
+
+/* ── RF Config tab ── */
+#rf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px 16px; }
+#rf-status { font-size: 11px; color: var(--amber); margin-top: 10px; min-height: 16px; }
+#rf-status.clean { color: var(--text-muted); }
+#rf-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+
+/* ── Send Packet tab ── */
+#send-form { display: grid; grid-template-columns: 120px 1fr; gap: 10px; align-items: start; max-width: 540px; }
+#payload-counter { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
+#payload-counter.over { color: var(--red); }
+
+/* ── Addresses tab ── */
+#addr-form { display: grid; grid-template-columns: 100px 1fr; gap: 10px; align-items: center; max-width: 460px; }
+#addr-actions { margin-top: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ── Bridge tab ── */
+#bridge-form { display: flex; flex-direction: column; gap: 8px; max-width: 360px; }
+.toggle-row { display: flex; align-items: center; gap: 8px; }
+.toggle-row span { font-size: 13px; }
+
+/* ── Events tab ── */
+#events-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+#event-status-chip { font-size: 11px; }
+#event-log-wrap { position: relative; }
+#event-log {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+  font-family: var(--mono); font-size: 11px; height: 200px; overflow-y: auto;
+  padding: 8px 10px; white-space: pre-wrap; word-break: break-all;
+  color: var(--text);
+}
+#event-log-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
+
+/* ── Raw JSON tab ── */
+#raw-form { display: flex; flex-direction: column; gap: 8px; max-width: 540px; }
+#raw-input {
+  background: var(--bg); border: 1px solid var(--border2); border-radius: var(--radius);
+  color: var(--text); font-family: var(--mono); font-size: 12px; height: 140px;
+  padding: 8px 10px; resize: vertical; width: 100%;
+}
+#raw-error { color: var(--red); font-size: 11px; min-height: 16px; }
+
+/* ── Command log ── */
+#cmd-log-wrap {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+  font-family: var(--mono); font-size: 11px; flex: 1; min-height: 140px; max-height: 260px;
+  overflow-y: auto; padding: 8px 10px;
+}
+.log-req { color: var(--text-muted); }
+.log-resp { color: var(--green); }
+.log-err { color: var(--red); }
+.log-info { color: var(--accent); }
+#log-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  #overview-grid { grid-template-columns: repeat(2, 1fr); }
+  #send-form { grid-template-columns: 1fr; }
+  #addr-form { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- Connection bar -->
+<div class="card" id="conn-bar">
+  <div class="card-title">Connection</div>
+  <div id="conn-top">
+    <div class="field-col">
+      <label>Transport</label>
+      <select id="transport" style="width:130px"></select>
+    </div>
+    <div class="field-col" id="endpoint-col">
+      <label id="endpoint-label">Endpoint</label>
+      <div id="endpoint-wrap">
+        <select id="serial-port" style="min-width:180px"></select>
+        <button id="refresh-ports" style="flex-shrink:0">Refresh</button>
+        <input id="host-input" type="text" placeholder="192.168.4.1" style="display:none">
+        <input id="ble-input" type="text" placeholder="WirelessDev-Node1" style="display:none">
+      </div>
+    </div>
+    <div class="sep"></div>
+    <div class="field-col">
+      <label>Timeout (s)</label>
+      <input id="timeout" type="number" value="3.0" min="0.1" step="0.5" style="width:70px">
+    </div>
+    <label style="display:flex;align-items:center;gap:5px;margin-top:14px">
+      <input id="auto-status" type="checkbox" checked> Auto status
+    </label>
+    <button id="btn-disconnect" class="danger" style="margin-top:14px">Disconnect</button>
+  </div>
+  <div id="quick-cmds" style="margin-top:8px">
+    <button data-cmd="ping">Ping</button>
+    <button data-cmd="status">Status</button>
+    <button data-cmd="self_test">Self Test</button>
+    <button data-cmd="protocol">Protocol</button>
+    <button data-cmd="rf_get_config">RF Config</button>
+  </div>
+</div>
+
+<!-- Device overview -->
+<div class="card">
+  <div class="card-title">Device Overview</div>
+  <div id="overview-grid">
+    <div class="ov-item"><div class="ov-label">Role</div><div class="ov-value" id="ov-role">—</div></div>
+    <div class="ov-item"><div class="ov-label">Firmware</div><div class="ov-value" id="ov-fw">—</div></div>
+    <div class="ov-item"><div class="ov-label">Protocol</div><div class="ov-value" id="ov-protocol">—</div></div>
+    <div class="ov-item"><div class="ov-label">Uptime</div><div class="ov-value" id="ov-uptime">—</div></div>
+    <div class="ov-item"><div class="ov-label">Radio</div><div class="ov-value" id="ov-radio">—</div></div>
+    <div class="ov-item"><div class="ov-label">RF Channel</div><div class="ov-value" id="ov-channel">—</div></div>
+    <div class="ov-item"><div class="ov-label">Datarate</div><div class="ov-value" id="ov-datarate">—</div></div>
+    <div class="ov-item"><div class="ov-label">Power</div><div class="ov-value" id="ov-power">—</div></div>
+    <div class="ov-item"><div class="ov-label">RX Address</div><div class="ov-value" id="ov-rx-addr">—</div></div>
+    <div class="ov-item"><div class="ov-label">TX Address</div><div class="ov-value" id="ov-tx-addr">—</div></div>
+    <div class="ov-item"><div class="ov-label">Listening</div><div class="ov-value" id="ov-listening">—</div></div>
+    <div class="ov-item"><div class="ov-label">Bridge</div><div class="ov-value" id="ov-bridge">—</div></div>
+    <div class="ov-item"><div class="ov-label">BLE</div><div class="ov-value" id="ov-ble">—</div></div>
+    <div class="ov-item"><div class="ov-label">Wi-Fi</div><div class="ov-value" id="ov-wifi">—</div></div>
+    <div class="ov-item" style="grid-column:span 2"><div class="ov-label">Counters</div><div class="ov-value" id="ov-stats">—</div></div>
+  </div>
+</div>
+
+<!-- Workspace tabs -->
+<div class="card" style="padding:0;overflow:hidden">
+  <div id="tab-bar">
+    <button class="tab-btn active" data-tab="rf-config">RF Config</button>
+    <button class="tab-btn" data-tab="send">Send Packet</button>
+    <button class="tab-btn" data-tab="addresses">Addresses</button>
+    <button class="tab-btn" data-tab="bridge">Bridge</button>
+    <button class="tab-btn" data-tab="events">Live Events</button>
+    <button class="tab-btn" data-tab="raw">Raw JSON</button>
+  </div>
+
+  <!-- RF Config -->
+  <div id="tab-rf-config" class="tab-panel active">
+    <div id="rf-grid">
+      <div class="field-col">
+        <label>Channel (0–125)</label>
+        <input id="rf-channel" type="number" min="0" max="125" value="76" style="width:80px">
+      </div>
+      <div class="field-col">
+        <label>Datarate</label>
+        <select id="rf-datarate" style="width:110px"></select>
+      </div>
+      <div class="field-col">
+        <label>Power</label>
+        <select id="rf-power" style="width:90px"></select>
+      </div>
+      <div class="field-col" style="justify-content:flex-end">
+        <label style="display:flex;align-items:center;gap:6px">
+          <input id="rf-auto-ack" type="checkbox" checked> Auto ACK
+        </label>
+      </div>
+    </div>
+    <div id="rf-actions">
+      <button data-cmd="rf_get_config">Read Config</button>
+      <button id="btn-apply-rf" class="primary">Apply Config</button>
+      <button data-cmd="rf_start_listen">Start Listen</button>
+      <button data-cmd="rf_stop_listen">Stop Listen</button>
+      <button data-cmd="rf_flush_rx">Flush RX</button>
+      <button data-cmd="rf_flush_tx">Flush TX</button>
+    </div>
+    <div id="rf-status" class="clean">RF config matches last device read.</div>
+    <div class="hint">Runtime settings reset when the dongle reboots. Both RF peers need matching channel and datarate.</div>
+  </div>
+
+  <!-- Send Packet -->
+  <div id="tab-send" class="tab-panel">
+    <div id="send-form">
+      <label>Payload mode</label>
+      <select id="payload-mode" style="width:100px">
+        <option value="text">Text</option>
+        <option value="hex">Hex</option>
+      </select>
+      <label>Payload</label>
+      <div class="field-col">
+        <input id="payload" type="text" value="hello">
+        <div id="payload-counter">5 / 32 bytes</div>
+        <div id="payload-error" class="error-msg"></div>
+      </div>
+      <div></div>
+      <label style="display:flex;align-items:center;gap:6px">
+        <input id="require-ack" type="checkbox"> Require ACK
+      </label>
+    </div>
+    <div style="margin-top:14px">
+      <button id="btn-send" class="primary">Send RF Packet</button>
+    </div>
+  </div>
+
+  <!-- Addresses -->
+  <div id="tab-addresses" class="tab-panel">
+    <div id="addr-form">
+      <label>Format</label>
+      <select id="addr-format" style="width:100px">
+        <option value="ascii">ascii</option>
+        <option value="hex">hex</option>
+      </select>
+      <label>RX address</label>
+      <input id="rx-addr" type="text" value="NODE1">
+      <label>TX address</label>
+      <input id="tx-addr" type="text" value="NODE2">
+    </div>
+    <div id="addr-error" class="error-msg"></div>
+    <div id="addr-actions">
+      <button id="btn-node1">Node 1 Preset</button>
+      <button id="btn-node2">Node 2 Preset</button>
+      <button id="btn-set-addr" class="primary">Set Addresses</button>
+    </div>
+    <div class="hint">ASCII addresses must be 5 characters. Hex addresses must be 10 hex characters (no spaces or 0x prefix).</div>
+  </div>
+
+  <!-- Bridge -->
+  <div id="tab-bridge" class="tab-panel">
+    <div id="bridge-form">
+      <label class="toggle-row">
+        <input id="rf-to-wifi" type="checkbox" checked>
+        <span>Forward RF packets to Wi-Fi / WebSocket</span>
+      </label>
+      <label class="toggle-row">
+        <input id="rf-to-ble" type="checkbox" checked>
+        <span>Forward RF packets to BLE notifications</span>
+      </label>
+      <div style="margin-top:8px">
+        <button id="btn-apply-bridge" class="primary">Apply Bridge State</button>
+      </div>
+    </div>
+    <div class="hint" style="margin-top:12px">The V1 control surfaces are intended for trusted developer benches and lab networks.</div>
+  </div>
+
+  <!-- Live Events -->
+  <div id="tab-events" class="tab-panel">
+    <div id="events-top">
+      <div class="field-col">
+        <label>Source</label>
+        <select id="event-transport" style="width:120px"></select>
+      </div>
+      <div class="field-col">
+        <label id="event-endpoint-label">Host / URL</label>
+        <input id="event-host" type="text" value="192.168.4.1" style="min-width:180px">
+        <input id="event-ble" type="text" value="WirelessDev-Node1" style="min-width:180px;display:none">
+      </div>
+      <div style="display:flex;gap:6px;align-items:flex-end">
+        <button id="btn-start-stream" class="primary">Start Stream</button>
+        <button id="btn-stop-stream" disabled>Stop Stream</button>
+      </div>
+      <span id="event-status-chip" class="chip">Stopped</span>
+    </div>
+    <div style="margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap">
+      <button data-cmd="bridge" data-params='{"rf_to_wifi":true}'>Enable WebSocket Events</button>
+      <button data-cmd="bridge" data-params='{"rf_to_ble":true}'>Enable BLE Events</button>
+    </div>
+    <div id="event-log"></div>
+    <div id="event-log-actions"><button id="btn-clear-events">Clear Events</button></div>
+    <div class="hint">Start the stream, then send an RF packet from the peer dongle. WebSocket requires your PC on the dongle AP; BLE requires the bleak optional dependency and a BLE adapter.</div>
+  </div>
+
+  <!-- Raw JSON -->
+  <div id="tab-raw" class="tab-panel">
+    <div id="raw-form">
+      <label>JSON command object</label>
+      <textarea id="raw-input">{
+  "cmd": "status"
+}</textarea>
+      <div id="raw-error"></div>
+      <div><button id="btn-send-raw" class="primary">Send Raw Command</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Command log -->
+<div class="card" style="flex:1;display:flex;flex-direction:column;min-height:160px">
+  <div class="card-title">Command Log</div>
+  <div id="cmd-log-wrap"></div>
+  <div id="log-actions" style="margin-top:6px"><button id="btn-clear-log">Clear Log</button></div>
+</div>
+
+</div><!-- #app -->
+
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────────
+const TRANSPORTS = ['USB serial', 'HTTP', 'WebSocket', 'BLE'];
+const EVENT_TRANSPORTS = ['WebSocket', 'BLE'];
+const DATARATES = ['250kbps', '1mbps', '2mbps'];
+const POWER_LEVELS = ['min', 'low', 'high', 'max'];
+const MAX_PAYLOAD = 32;
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const state = {
+  transport: 'USB serial',
+  serialPort: '',
+  httpHost: '192.168.4.1',
+  wsHost: '192.168.4.1',
+  bleDevice: 'WirelessDev-Node1',
+  timeout: 3.0,
+  autoStatus: true,
+  busy: false,
+  rfDirty: false,
+  rfLoadingFromDevice: false,
+  eventRunning: false,
+  eventCount: 0,
+  eventPacketCount: 0,
+};
+
+// ── DOM helpers ───────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const el = (tag, props = {}) => Object.assign(document.createElement(tag), props);
+
+function populateSelect(id, values, selected) {
+  const s = $(id);
+  s.innerHTML = '';
+  values.forEach(v => {
+    const o = el('option', { value: v, textContent: v });
+    if (v === selected) o.selected = true;
+    s.appendChild(o);
+  });
+}
+
+// ── Init selects ──────────────────────────────────────────────────────────────
+populateSelect('transport', TRANSPORTS, 'USB serial');
+populateSelect('rf-datarate', DATARATES, '1mbps');
+populateSelect('rf-power', POWER_LEVELS, 'low');
+populateSelect('event-transport', EVENT_TRANSPORTS, 'WebSocket');
+
+// ── Transport controls ────────────────────────────────────────────────────────
+function syncTransportUI() {
+  const t = $('transport').value;
+  const serial = $('serial-port');
+  const rfBtn = $('refresh-ports');
+  const host = $('host-input');
+  const ble = $('ble-input');
+  const lbl = $('endpoint-label');
+
+  serial.style.display = 'none';
+  rfBtn.style.display = 'none';
+  host.style.display = 'none';
+  ble.style.display = 'none';
+
+  if (t === 'USB serial') {
+    lbl.textContent = 'Port';
+    serial.style.display = '';
+    rfBtn.style.display = '';
+  } else if (t === 'BLE') {
+    lbl.textContent = 'Device';
+    ble.style.display = '';
+    ble.value = state.bleDevice;
+  } else {
+    lbl.textContent = t === 'HTTP' ? 'Host' : 'Host / URL';
+    host.style.display = '';
+    host.value = t === 'HTTP' ? state.httpHost : state.wsHost;
+  }
+}
+
+function syncEventTransportUI() {
+  const t = $('event-transport').value;
+  const host = $('event-host');
+  const ble = $('event-ble');
+  $('event-endpoint-label').textContent = t === 'BLE' ? 'Device' : 'Host / URL';
+  host.style.display = t === 'BLE' ? 'none' : '';
+  ble.style.display = t === 'BLE' ? '' : 'none';
+}
+
+$('transport').addEventListener('change', syncTransportUI);
+$('event-transport').addEventListener('change', syncEventTransportUI);
+$('host-input').addEventListener('input', () => {
+  if ($('transport').value === 'HTTP') state.httpHost = $('host-input').value;
+  if ($('transport').value === 'WebSocket') state.wsHost = $('host-input').value;
+});
+$('ble-input').addEventListener('input', () => {
+  state.bleDevice = $('ble-input').value;
+});
+syncTransportUI();
+syncEventTransportUI();
+
+// ── Endpoint resolver ─────────────────────────────────────────────────────────
+function getEndpoint() {
+  const t = $('transport').value;
+  if (t === 'USB serial') {
+    const sel = $('serial-port').value.trim();
+    return sel.split(' – ')[0].split(' - ')[0].trim();
+  }
+  if (t === 'BLE') return $('ble-input').value.trim();
+  return $('host-input').value.trim();
+}
+
+function getEventEndpoint() {
+  return $('event-transport').value === 'BLE'
+    ? $('event-ble').value.trim()
+    : $('event-host').value.trim();
+}
+
+function getTimeout() {
+  const v = parseFloat($('timeout').value);
+  return isFinite(v) && v > 0 ? v : 3.0;
+}
+
+// ── Busy state ────────────────────────────────────────────────────────────────
+function setBusy(busy) {
+  state.busy = busy;
+  document.querySelectorAll('button[data-cmd], #btn-apply-rf, #btn-send, #btn-set-addr, #btn-apply-bridge, #btn-send-raw')
+    .forEach(b => { b.disabled = busy; });
+}
+
+// ── Serial ports ──────────────────────────────────────────────────────────────
+async function refreshPorts() {
+  const sel = $('serial-port');
+  try {
+    const res = await fetch('/api/ports');
+    const data = await res.json();
+    const prev = sel.value;
+    sel.innerHTML = '';
+    if (data.error) {
+      appendLog('! ' + data.error, 'err');
+      return;
+    }
+    if (!data.ports.length) {
+      const o = el('option', { value: '', textContent: '(no ports found)' });
+      sel.appendChild(o);
+      return;
+    }
+    data.ports.forEach(p => {
+      const label = p.description && p.description !== p.device
+        ? `${p.device} – ${p.description}` : p.device;
+      const o = el('option', { value: p.device, textContent: label });
+      if (p.device === prev) o.selected = true;
+      sel.appendChild(o);
+    });
+    if (!prev) sel.selectedIndex = 0;
+  } catch (e) {
+    appendLog('! Failed to fetch ports: ' + e.message, 'err');
+  }
+}
+
+$('refresh-ports').addEventListener('click', refreshPorts);
+refreshPorts();
+
+// ── API command ───────────────────────────────────────────────────────────────
+async function sendCommand(cmd, params = {}) {
+  if (state.busy) { appendLog('! Command already in progress.', 'err'); return null; }
+  const transport = $('transport').value;
+  const endpoint = getEndpoint();
+  if (!endpoint) {
+    const msg = transport === 'USB serial' ? 'Select a USB serial port first.'
+      : transport === 'BLE' ? 'Enter a BLE device name or address.'
+      : 'Enter a host, IP address, or URL.';
+    appendLog('! ' + msg, 'err');
+    return null;
+  }
+  const timeout = getTimeout();
+  const body = { transport, endpoint, timeout, cmd, params };
+  appendLog(`> ${transport} ${endpoint} ${JSON.stringify({ cmd, ...params })}`, 'req');
+  setBusy(true);
+  try {
+    const res = await fetch('/api/command', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    appendLog('< ' + JSON.stringify(data, null, 2), 'resp');
+    if (!data.ok) {
+      const e = data.error || (data.error_obj && data.error_obj.message) || 'command failed';
+      appendLog('! ' + (typeof e === 'string' ? e : JSON.stringify(e)), 'err');
+    } else {
+      handleResponse(data);
+    }
+    return data;
+  } catch (e) {
+    appendLog('! ' + e.message, 'err');
+    return null;
+  } finally {
+    setBusy(false);
+  }
+}
+
+// ── Response handler ──────────────────────────────────────────────────────────
+function handleResponse(resp) {
+  const cmd = resp.cmd;
+  const data = (resp.data && typeof resp.data === 'object') ? resp.data : {};
+
+  if (cmd === 'status') updateOverview(data, false);
+  else if (cmd === 'self_test') updateOverview(data, true);
+  else if (cmd === 'rf_get_config' || cmd === 'rf_config') {
+    updateRFControls(data, true);
+    setRFDirty(false);
+  } else if (cmd === 'rf_set_address') {
+    updateRFControls(data, false);
+  } else if (cmd === 'bridge') {
+    updateBridgeControls(data);
+  }
+
+  const skipRefresh = ['status','self_test','protocol','capabilities','rf_get_config'];
+  if (!skipRefresh.includes(cmd)) {
+    setTimeout(() => { if (!state.busy && getEndpoint()) sendCommand('status', {}); }, 400);
+  }
+}
+
+// ── Overview update ───────────────────────────────────────────────────────────
+function formatUptime(ms) {
+  if (typeof ms !== 'number') return '—';
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  if (h) return `${h}h ${m}m ${sec}s`;
+  if (m) return `${m}m ${sec}s`;
+  return `${sec}s`;
+}
+
+function fmtEnabledConnected(enabled, connected) {
+  if (enabled === null || enabled === undefined) return '—';
+  if (!enabled) return 'disabled';
+  return connected ? 'connected' : 'advertising';
+}
+
+function updateOverview(data, isSelfTest) {
+  const set = (id, val) => { const e = $(id); if (e) e.textContent = val ?? '—'; };
+
+  if (isSelfTest) {
+    set('ov-role', data.role);
+    set('ov-fw', data.fw);
+    set('ov-protocol', data.protocol);
+    set('ov-uptime', formatUptime(data.uptime_ms));
+    set('ov-radio', (data.radio_initialized && data.radio_chip_connected) ? 'ok' : 'check');
+    set('ov-wifi', data.wifi_ap_ip);
+    set('ov-ble', fmtEnabledConnected(data.ble_enabled, data.ble_connected));
+    return;
+  }
+
+  const radio = (data.radio && typeof data.radio === 'object') ? data.radio : {};
+  const wifi = (data.wifi && typeof data.wifi === 'object') ? data.wifi : {};
+  const bridge = (data.bridge && typeof data.bridge === 'object') ? data.bridge : {};
+  const ble = (data.ble && typeof data.ble === 'object') ? data.ble : {};
+  const stats = (data.stats && typeof data.stats === 'object') ? data.stats : {};
+
+  set('ov-role', data.role);
+  set('ov-fw', data.fw);
+  set('ov-protocol', data.protocol);
+  set('ov-uptime', formatUptime(data.uptime_ms));
+  set('ov-radio', (radio.initialized && radio.chip_connected) ? 'ok' : radio.initialized != null ? 'check' : '—');
+  set('ov-channel', radio.channel);
+  set('ov-datarate', radio.datarate);
+  set('ov-power', radio.power);
+  set('ov-listening', radio.listening != null ? (radio.listening ? 'yes' : 'no') : '—');
+  set('ov-wifi', wifi.ip ? `${wifi.ip} (${wifi.clients ?? 0} clients)` : '—');
+  set('ov-ble', fmtEnabledConnected(ble.enabled, ble.connected));
+  set('ov-stats', `RX ${stats.rf_rx ?? 0} / TX ${stats.rf_tx ?? 0} / fail ${stats.rf_tx_fail ?? 0}`);
+
+  if (data.bridge) updateBridgeControls(bridge);
+  updateRFControls(radio, !state.rfDirty);
+  if (radio.rx_address_ascii || radio.rx_address_hex) {
+    set('ov-rx-addr', radio.rx_address_ascii || radio.rx_address_hex);
+  }
+  if (radio.tx_address_ascii || radio.tx_address_hex) {
+    set('ov-tx-addr', radio.tx_address_ascii || radio.tx_address_hex);
+  }
+}
+
+// ── RF controls ───────────────────────────────────────────────────────────────
+function updateRFControls(data, updateForm) {
+  state.rfLoadingFromDevice = true;
+  try {
+    if (data.channel != null) {
+      if (updateForm) $('rf-channel').value = data.channel;
+      $('ov-channel').textContent = data.channel;
+    }
+    if (data.datarate != null) {
+      if (updateForm) $('rf-datarate').value = data.datarate;
+      $('ov-datarate').textContent = data.datarate;
+    }
+    if (data.power != null) {
+      if (updateForm) $('rf-power').value = data.power;
+      $('ov-power').textContent = data.power;
+    }
+    if (data.auto_ack != null && updateForm) {
+      $('rf-auto-ack').checked = !!data.auto_ack;
+    }
+    if (data.listening != null) {
+      $('ov-listening').textContent = data.listening ? 'yes' : 'no';
+    }
+    if (data.rx_address_ascii || data.rx_address_hex) {
+      const rx = data.rx_address_ascii || data.rx_address_hex;
+      $('ov-rx-addr').textContent = rx;
+      if (updateForm) $('rx-addr').value = rx;
+    }
+    if (data.tx_address_ascii || data.tx_address_hex) {
+      const tx = data.tx_address_ascii || data.tx_address_hex;
+      $('ov-tx-addr').textContent = tx;
+      if (updateForm) $('tx-addr').value = tx;
+    }
+    if (data.rx_address_ascii || data.tx_address_ascii) {
+      if (updateForm) $('addr-format').value = 'ascii';
+    } else if (data.rx_address_hex || data.tx_address_hex) {
+      if (updateForm) $('addr-format').value = 'hex';
+    }
+  } finally {
+    state.rfLoadingFromDevice = false;
+  }
+}
+
+function setRFDirty(dirty) {
+  state.rfDirty = dirty;
+  const el = $('rf-status');
+  if (dirty) {
+    el.textContent = 'Unsaved RF config edits — click Apply Config to send them.';
+    el.className = '';
+  } else {
+    el.textContent = 'RF config matches last device read.';
+    el.className = 'clean';
+  }
+}
+
+['rf-channel','rf-datarate','rf-power','rf-auto-ack'].forEach(id => {
+  $(id).addEventListener('change', () => { if (!state.rfLoadingFromDevice) setRFDirty(true); });
+  $(id).addEventListener('input', () => { if (!state.rfLoadingFromDevice) setRFDirty(true); });
+});
+
+// ── Bridge controls ───────────────────────────────────────────────────────────
+function updateBridgeControls(data) {
+  if (data.rf_to_wifi != null) $('rf-to-wifi').checked = !!data.rf_to_wifi;
+  if (data.rf_to_ble != null) $('rf-to-ble').checked = !!data.rf_to_ble;
+  const w = $('rf-to-wifi').checked ? 'wifi on' : 'wifi off';
+  const b = $('rf-to-ble').checked ? 'ble on' : 'ble off';
+  $('ov-bridge').textContent = `${w}, ${b}`;
+}
+
+// ── Payload counter ───────────────────────────────────────────────────────────
+function updatePayloadCounter() {
+  const mode = $('payload-mode').value;
+  const val = $('payload').value;
+  let count = 0;
+  if (mode === 'text') {
+    count = new TextEncoder().encode(val).length;
+  } else {
+    let h = val.trim().replace(/^0x/i, '').replace(/\s/g, '');
+    count = h.length % 2 === 0 ? h.length / 2 : Math.ceil(h.length / 2);
+  }
+  const counter = $('payload-counter');
+  counter.textContent = `${count} / ${MAX_PAYLOAD} bytes`;
+  counter.className = count > MAX_PAYLOAD ? 'over' : '';
+}
+
+$('payload').addEventListener('input', updatePayloadCounter);
+$('payload-mode').addEventListener('change', updatePayloadCounter);
+updatePayloadCounter();
+
+// ── Validation ────────────────────────────────────────────────────────────────
+function payloadToHex(value, mode) {
+  if (mode === 'text') {
+    const bytes = new TextEncoder().encode(value);
+    if (!bytes.length) throw new Error('Payload must not be empty.');
+    if (bytes.length > MAX_PAYLOAD) throw new Error(`nRF24 payloads are limited to ${MAX_PAYLOAD} bytes.`);
+    return Array.from(bytes).map(b => b.toString(16).padStart(2,'0').toUpperCase()).join('');
+  }
+  let h = value.trim().replace(/^0x/i, '').replace(/\s/g, '');
+  if (!h) throw new Error('Payload must not be empty.');
+  if (h.length % 2) throw new Error('Hex payload must have an even number of characters.');
+  if (!/^[0-9a-fA-F]+$/.test(h)) throw new Error('Hex payload contains non-hex characters.');
+  if (h.length / 2 > MAX_PAYLOAD) throw new Error(`nRF24 payloads are limited to ${MAX_PAYLOAD} bytes.`);
+  return h.toUpperCase();
+}
+
+function validateAddress(label, value, fmt) {
+  if (fmt === 'ascii') {
+    if (!/^[\x00-\x7F]*$/.test(value)) throw new Error(`${label} must contain ASCII characters only.`);
+    if (value.length !== 5) throw new Error(`${label} must be exactly 5 ASCII characters.`);
+    return;
+  }
+  let h = value.trim().replace(/^0x/i, '').replace(/\s/g, '');
+  if (h.length !== 10) throw new Error(`${label} must be exactly 10 hex characters.`);
+  if (!/^[0-9a-fA-F]+$/.test(h)) throw new Error(`${label} contains non-hex characters.`);
+}
+
+// ── Button handlers ───────────────────────────────────────────────────────────
+document.querySelectorAll('button[data-cmd]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const params = btn.dataset.params ? JSON.parse(btn.dataset.params) : {};
+    sendCommand(btn.dataset.cmd, params);
+  });
+});
+
+$('btn-apply-rf').addEventListener('click', () => {
+  const ch = parseInt($('rf-channel').value, 10);
+  if (isNaN(ch) || ch < 0 || ch > 125) {
+    appendLog('! Channel must be an integer from 0 to 125.', 'err'); return;
+  }
+  sendCommand('rf_config', {
+    channel: ch,
+    datarate: $('rf-datarate').value,
+    power: $('rf-power').value,
+    auto_ack: $('rf-auto-ack').checked,
+  });
+});
+
+$('btn-send').addEventListener('click', () => {
+  const mode = $('payload-mode').value;
+  $('payload-error').textContent = '';
+  let hex;
+  try { hex = payloadToHex($('payload').value, mode); }
+  catch (e) { $('payload-error').textContent = e.message; return; }
+  sendCommand('rf_send', { hex, require_ack: $('require-ack').checked });
+});
+
+$('btn-node1').addEventListener('click', () => {
+  $('addr-format').value = 'ascii';
+  $('rx-addr').value = 'NODE1';
+  $('tx-addr').value = 'NODE2';
+});
+
+$('btn-node2').addEventListener('click', () => {
+  $('addr-format').value = 'ascii';
+  $('rx-addr').value = 'NODE2';
+  $('tx-addr').value = 'NODE1';
+});
+
+$('btn-set-addr').addEventListener('click', () => {
+  const fmt = $('addr-format').value;
+  const rx = $('rx-addr').value.trim();
+  const tx = $('tx-addr').value.trim();
+  $('addr-error').textContent = '';
+  try {
+    validateAddress('RX', rx, fmt);
+    validateAddress('TX', tx, fmt);
+  } catch (e) { $('addr-error').textContent = e.message; return; }
+  sendCommand('rf_set_address', { rx, tx, format: fmt });
+});
+
+$('btn-apply-bridge').addEventListener('click', () => {
+  sendCommand('bridge', { rf_to_wifi: $('rf-to-wifi').checked, rf_to_ble: $('rf-to-ble').checked });
+});
+
+$('btn-send-raw').addEventListener('click', () => {
+  const raw = $('raw-input').value.trim();
+  $('raw-error').textContent = '';
+  let obj;
+  try { obj = JSON.parse(raw); } catch (e) { $('raw-error').textContent = 'Invalid JSON: ' + e.message; return; }
+  if (typeof obj !== 'object' || Array.isArray(obj)) { $('raw-error').textContent = 'Must be a JSON object.'; return; }
+  const cmd = obj.cmd;
+  if (typeof cmd !== 'string' || !cmd.trim()) { $('raw-error').textContent = 'Object must have a non-empty "cmd" string.'; return; }
+  const { cmd: _, ...params } = obj;
+  sendCommand(cmd.trim(), params);
+});
+
+$('btn-disconnect').addEventListener('click', async () => {
+  appendLog('> disconnect', 'req');
+  await fetch('/api/disconnect', { method: 'POST' });
+  appendLog('< Disconnected all open devices.', 'info');
+});
+
+// ── Event stream ──────────────────────────────────────────────────────────────
+$('btn-start-stream').addEventListener('click', async () => {
+  const transport = $('event-transport').value;
+  const endpoint = getEventEndpoint();
+  if (!endpoint) { appendEventLog('! Enter a WebSocket host or BLE device name.'); return; }
+  const res = await fetch('/api/events/start', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ transport, endpoint, timeout: getTimeout() }),
+  });
+  const data = await res.json();
+  if (!data.ok) { appendEventLog('! ' + data.error); return; }
+  state.eventRunning = true;
+  state.eventCount = 0; state.eventPacketCount = 0;
+  $('event-status-chip').className = 'chip blue';
+  $('btn-start-stream').disabled = true;
+  $('btn-stop-stream').disabled = false;
+  appendEventLog(`> stream ${transport} ${endpoint}`);
+});
+
+$('btn-stop-stream').addEventListener('click', async () => {
+  await fetch('/api/events/stop', { method: 'POST' });
+  $('event-status-chip').textContent = 'Stopping...';
+});
+
+$('btn-clear-events').addEventListener('click', () => {
+  $('event-log').textContent = '';
+  state.eventCount = 0; state.eventPacketCount = 0;
+  $('event-status-chip').textContent = state.eventRunning
+    ? `Streaming (0 packets, 0 events)` : 'Stopped';
+});
+
+// ── SSE ───────────────────────────────────────────────────────────────────────
+let eventSource = null;
+let reconnectTimer = null;
+
+function connectSSE() {
+  if (eventSource) return;
+  const es = new EventSource('/api/events/stream');
+  eventSource = es;
+  es.onopen = () => {
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+  };
+  es.onmessage = e => {
+    let msg;
+    try { msg = JSON.parse(e.data); } catch { return; }
+    const { type } = msg;
+    if (type === 'event_state') {
+      $('event-status-chip').className = 'chip blue';
+      $('event-status-chip').textContent = msg.status;
+      appendEventLog('* ' + msg.status);
+    } else if (type === 'event_error') {
+      $('event-status-chip').className = 'chip err';
+      $('event-status-chip').textContent = 'Error';
+      appendEventLog('! ' + msg.message);
+    } else if (type === 'event') {
+      handleLiveEvent(msg.data);
+    } else if (type === 'event_stopped') {
+      state.eventRunning = false;
+      $('btn-start-stream').disabled = false;
+      $('btn-stop-stream').disabled = true;
+      $('event-status-chip').className = 'chip';
+      $('event-status-chip').textContent = `Stopped (${state.eventPacketCount} pkts, ${state.eventCount} events)`;
+      appendEventLog('< stream stopped');
+    }
+  };
+  es.onerror = () => {
+    es.close();
+    if (eventSource === es) eventSource = null;
+    if (!reconnectTimer) {
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connectSSE();
+      }, 3000);
+    }
+  };
+}
+
+function handleLiveEvent(event) {
+  state.eventCount++;
+  const t = event && event.type;
+  if (t === 'packet') {
+    state.eventPacketCount++;
+    const d = (event.data && typeof event.data === 'object') ? event.data : {};
+    appendEventLog(`< packet len=${d.len ?? '?'} hex=${d.hex ?? '?'} uptime_ms=${d.uptime_ms ?? '?'}`);
+  } else if (t === 'status') {
+    appendEventLog('< status event');
+    const d = (event.data && typeof event.data === 'object') ? event.data : {};
+    updateOverview(d, false);
+  } else {
+    appendEventLog('< event ' + JSON.stringify(event));
+  }
+  $('event-status-chip').className = 'chip blue';
+  $('event-status-chip').textContent = `Streaming (${state.eventPacketCount} pkts, ${state.eventCount} events)`;
+}
+
+connectSSE();
+
+// ── Logs ──────────────────────────────────────────────────────────────────────
+function appendLog(text, cls) {
+  const wrap = $('cmd-log-wrap');
+  const line = el('div', { textContent: text });
+  if (cls === 'req') line.className = 'log-req';
+  else if (cls === 'resp') line.className = 'log-resp';
+  else if (cls === 'err') line.className = 'log-err';
+  else line.className = 'log-info';
+  wrap.appendChild(line);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function appendEventLog(text) {
+  const log = $('event-log');
+  log.textContent += text + '\n';
+  log.scrollTop = log.scrollHeight;
+}
+
+$('btn-clear-log').addEventListener('click', () => { $('cmd-log-wrap').innerHTML = ''; });
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    $('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Auto status refresh ───────────────────────────────────────────────────────
+setInterval(() => {
+  if ($('auto-status').checked && !state.busy && getEndpoint()) {
+    sendCommand('status', {}).catch(() => {});
+  }
+}, 3000);
+
+// ── Startup log ───────────────────────────────────────────────────────────────
+appendLog('Wireless Dev Bridge Workbench ready. Select a transport and endpoint, then click Ping or Status.', 'info');
+</script>
+</body>
+</html>
