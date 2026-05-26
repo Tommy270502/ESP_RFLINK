@@ -2,18 +2,18 @@
 
 ![Wireless Dev Bridge PCB top view](docs/assets/board/PCB-TOP.png)
 
-Wireless Dev Bridge is a compact USB-C developer dongle for engineers who need one bench interface for Wi-Fi, BLE, and nRF24L01-based 2.4 GHz RF systems. It combines an ESP32-S3, native USB CDC serial, a browser dashboard, BLE GATT, WebSocket streaming, and an nRF24L01+ radio path behind one JSON command protocol.
+Wireless Dev Bridge is a compact USB-C developer dongle for engineers who need one bench interface for Wi-Fi, BLE, and nRF24L01-based 2.4 GHz RF systems. It combines an ESP32-S3, native USB CDC serial, a firmware browser dashboard, BLE GATT, WebSocket streaming, and an nRF24L01+ radio path behind one JSON command protocol.
 
 This repository is organized as a V1 external developer launch package: firmware, host tools, hardware source, board renders, and manufacturing outputs are all included.
 
 ## What You Can Do
 
 - Bridge nRF24 packets to USB serial, Wi-Fi/WebSocket, or BLE notifications.
-- Send and receive 32-byte nRF24 payloads from scripts, the CLI, the desktop workbench, or the browser UI.
+- Send and receive 32-byte nRF24 payloads from scripts, the CLI, the local web workbench, or the firmware browser dashboard.
 - Configure RF channel, datarate, power, auto-ACK, listen state, and 5-byte pipe addresses.
 - Watch live RF packet events over WebSocket or BLE while controlling devices over USB serial.
 - Run two-dongle RF ping and production-style self-test workflows.
-- Use the Python SDK, CLI, or desktop workbench without writing embedded code.
+- Use the Python SDK, CLI, or local web workbench without writing embedded code.
 
 ## Quick Start
 
@@ -39,14 +39,14 @@ wdb --serial COM5 self-test
 wdb --serial COM5 status
 ```
 
-Launch the desktop workbench:
+Launch the local web workbench (`http://127.0.0.1:5173`):
 
 ```bash
 # from the repository root
 python application/main.py
 ```
 
-Use the desktop workbench to configure both node roles, send ACK-required RF packets in both directions, watch counters, and stream RF packet events over WebSocket or BLE.
+Use the local web workbench to configure both node roles, send ACK-required RF packets in both directions, watch counters, and stream RF packet events over WebSocket or BLE.
 
 Run the two-dongle production demo with flashing and a JSON report:
 
@@ -60,7 +60,7 @@ Use Wi-Fi after connecting your computer to the dongle AP:
 wdb --host 192.168.4.1 status
 ```
 
-Open the browser dashboard at:
+Open the firmware browser dashboard at:
 
 ```text
 http://192.168.4.1
@@ -71,7 +71,7 @@ http://192.168.4.1
 | Path | Purpose |
 | --- | --- |
 | `Firmware/ESP32_RFLINK` | PlatformIO firmware for the ESP32-S3 dongle. |
-| `application` | Tkinter desktop workbench for the shared command protocol. |
+| `application` | Local FastAPI/browser workbench for the shared command protocol. |
 | `sdk/python` | Python SDK, CLI, examples, and hardware-free tests. |
 | `hardware/kicad` | KiCad schematic and PCB source. |
 | `manufacturing/gerbers` | Current V1 Gerber/drill export. |
@@ -83,11 +83,11 @@ http://192.168.4.1
 | Interface | Default endpoint | Use case |
 | --- | --- | --- |
 | USB CDC serial | 115200 baud JSONL | Reliable bench automation and flashing-adjacent validation. |
-| HTTP JSON | `http://192.168.4.1` | Simple host scripts and browser UI control. |
+| HTTP JSON | `http://192.168.4.1` | Simple host scripts and firmware browser dashboard. |
 | WebSocket JSON | `ws://192.168.4.1:81/` | Live packet monitor and RF event streaming. |
 | BLE GATT | `WirelessDev-Node1` or `WirelessDev-Node2` | Mobile, field, and BLE-host workflows. |
 
-The desktop workbench and Python SDK can use these same transports from the host side.
+The local web workbench and Python SDK can use these same transports from the host side.
 
 All transports share the same command response envelope:
 
@@ -104,7 +104,7 @@ For a two-dongle RF bench, flash one dongle as `node1` and one as `node2`. Keep 
 | `node1` | `NODE1` | `NODE2` |
 | `node2` | `NODE2` | `NODE1` |
 
-In the desktop workbench, use USB serial for reliable command control. The app keeps open connections per endpoint so switching between COM ports does not reset the boards. `status` counters should show `rf_tx` increasing on the sender and `rf_rx` increasing on the peer.
+In the local web workbench, use USB serial for reliable command control. The app keeps open connections per endpoint so switching between COM ports does not reset the boards. `status` counters should show `rf_tx` increasing on the sender and `rf_rx` increasing on the peer.
 
 To prove wireless event streaming, use the **Live Events** tab:
 
@@ -119,7 +119,7 @@ To prove wireless event streaming, use the **Live Events** tab:
 - [Firmware Guide](docs/firmware.md)
 - [Hardware Guide](docs/hardware.md)
 - [Release Checklist](docs/release-checklist.md)
-- [Desktop Workbench](application/desktop-workbench.md)
+- [Local Web Workbench](application/desktop-workbench.md)
 - [Python SDK](sdk/python/python-sdk-guide.md)
 
 ## V1 Boundaries

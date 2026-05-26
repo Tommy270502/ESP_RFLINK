@@ -15,11 +15,19 @@ CommandService commandService;
 static void fillStats(JsonObject data) {
   data["rf_rx"] = stats.rfRx;
   data["rf_tx"] = stats.rfTx;
+  data["rf_tx_attempts"] = stats.rfTxAttempts;
   data["rf_tx_fail"] = stats.rfTxFail;
   data["rf_rx_invalid"] = stats.rfRxInvalid;
   data["ws_rx"] = stats.wsRx;
   data["ble_rx"] = stats.bleRx;
   data["serial_rx"] = stats.serialRx;
+  data["last_packet_ms"] = stats.lastPacketMs;
+  data["last_packet_len"] = stats.lastPacketLen;
+  if (stats.rfTxAttempts > 0) {
+    data["ack_failure_rate"] = static_cast<float>(stats.rfTxFail) / static_cast<float>(stats.rfTxAttempts);
+  } else {
+    data["ack_failure_rate"] = 0;
+  }
 }
 
 static void fillWifiStatus(JsonObject data) {
@@ -108,7 +116,13 @@ static void fillCapabilities(JsonObject data) {
   data["protocol"] = Config::PROTOCOL_VERSION;
   data["role"] = Config::DEVICE_ROLE_NAME;
   data["settings_persistence"] = true;
+  data["settings_schema_version"] = SETTINGS_SCHEMA_VERSION;
   data["optional_auth"] = true;
+
+  JsonObject build = data["build"].to<JsonObject>();
+  build["profile"] = BUILD_PROFILE;
+  build["date"] = BUILD_DATE;
+  if (strlen(GIT_SHA) > 0) build["git_sha"] = GIT_SHA;
 
   JsonObject transports = data["transports"].to<JsonObject>();
   transports["usb_serial_jsonl"] = true;
@@ -151,6 +165,10 @@ static void fillCapabilities(JsonObject data) {
   commands.add("settings_reset");
   commands.add("diagnostics");
   commands.add("identify");
+  commands.add("rf_metrics");
+  commands.add("rf_profiles");
+  commands.add("rf_apply_profile");
+  commands.add("event_log");
 }
 
 static bool readStringArg(JsonDocument& req, const char* key, String& out) {
@@ -188,22 +206,27 @@ void CommandService::makeError(JsonDocument& res, const char* cmd, const char* c
   error["message"] = message;
   lastErrorCode = code;
   lastErrorMessage = message;
+  eventLog.add("cmd_error", code);
 }
 
 static void handleRfConfig(JsonDocument& req, JsonDocument& res) {
+  uint8_t newChannel = rfCfg.channel;
+  rf24_datarate_e newDatarate = rfCfg.datarate;
+  rf24_pa_dbm_e newPower = rfCfg.power;
+  bool newAutoAck = rfCfg.autoAck;
+
   JsonVariant channelArg = req["channel"];
   if (!channelArg.isNull()) {
     if (!channelArg.is<int>()) {
       commandService.makeError(res, "rf_config", "invalid_arg", "channel must be a number");
       return;
     }
-
     int ch = channelArg.as<int>();
     if (ch < 0 || ch > 125) {
       commandService.makeError(res, "rf_config", "invalid_channel", "channel must be 0..125");
       return;
     }
-    rfCfg.channel = static_cast<uint8_t>(ch);
+    newChannel = static_cast<uint8_t>(ch);
   }
 
   String datarateString;
@@ -212,13 +235,10 @@ static void handleRfConfig(JsonDocument& req, JsonDocument& res) {
       commandService.makeError(res, "rf_config", "invalid_arg", "datarate must be a string");
       return;
     }
-
-    rf24_datarate_e datarate;
-    if (!parseDatarate(datarateString, datarate)) {
+    if (!parseDatarate(datarateString, newDatarate)) {
       commandService.makeError(res, "rf_config", "invalid_datarate", "datarate must be 250kbps, 1mbps, or 2mbps");
       return;
     }
-    rfCfg.datarate = datarate;
   }
 
   String powerString;
@@ -227,13 +247,10 @@ static void handleRfConfig(JsonDocument& req, JsonDocument& res) {
       commandService.makeError(res, "rf_config", "invalid_arg", "power must be a string");
       return;
     }
-
-    rf24_pa_dbm_e power;
-    if (!parsePower(powerString, power)) {
+    if (!parsePower(powerString, newPower)) {
       commandService.makeError(res, "rf_config", "invalid_power", "power must be min, low, high, or max");
       return;
     }
-    rfCfg.power = power;
   }
 
   JsonVariant autoAckArg = req["auto_ack"];
@@ -242,14 +259,20 @@ static void handleRfConfig(JsonDocument& req, JsonDocument& res) {
       commandService.makeError(res, "rf_config", "invalid_arg", "auto_ack must be true or false");
       return;
     }
-    rfCfg.autoAck = autoAckArg.as<bool>();
+    newAutoAck = autoAckArg.as<bool>();
   }
+
+  rfCfg.channel = newChannel;
+  rfCfg.datarate = newDatarate;
+  rfCfg.power = newPower;
+  rfCfg.autoAck = newAutoAck;
 
   if (!radioService.applyConfig()) {
     commandService.makeError(res, "rf_config", "radio_not_initialized", "radio not initialized");
     return;
   }
 
+  settingsService.markDirty();
   JsonObject data = commandService.makeOk(res, "rf_config");
   radioService.fillConfig(data);
 }
@@ -376,6 +399,7 @@ static void handleRfSetAddress(JsonDocument& req, JsonDocument& res) {
     }
   }
 
+  settingsService.markDirty();
   JsonObject data = commandService.makeOk(res, "rf_set_address");
   radioService.fillConfig(data);
 }
@@ -399,6 +423,7 @@ static void handleBridge(JsonDocument& req, JsonDocument& res) {
     bridgeService.setRfToBleEnabled(rfToBle.as<bool>());
   }
 
+  settingsService.markDirty();
   JsonObject data = commandService.makeOk(res, "bridge");
   bridgeService.fillStatus(data);
 }
@@ -570,9 +595,11 @@ static void handleSettingsSet(JsonDocument& req, JsonDocument& res) {
 static void handleSettingsSave(JsonDocument& res) {
   if (!settingsService.save()) {
     commandService.makeError(res, "settings_save", "nvs_error", "failed to save settings");
+    eventLog.add("settings", "save failed");
     return;
   }
 
+  eventLog.add("settings", "saved");
   JsonObject data = commandService.makeOk(res, "settings_save");
   settingsService.fillSettings(data);
 }
@@ -580,9 +607,11 @@ static void handleSettingsSave(JsonDocument& res) {
 static void handleSettingsReset(JsonDocument& res) {
   if (!settingsService.reset()) {
     commandService.makeError(res, "settings_reset", "nvs_error", "failed to reset settings");
+    eventLog.add("settings", "reset failed");
     return;
   }
 
+  eventLog.add("settings", "reset to defaults");
   JsonObject data = commandService.makeOk(res, "settings_reset");
   settingsService.fillSettings(data);
 }
@@ -597,6 +626,11 @@ static void fillDiagnostics(JsonObject data) {
   data["heap_size"] = ESP.getHeapSize();
   data["sdk_version"] = ESP.getSdkVersion();
 
+  JsonObject build = data["build"].to<JsonObject>();
+  build["profile"] = BUILD_PROFILE;
+  build["date"] = BUILD_DATE;
+  if (strlen(GIT_SHA) > 0) build["git_sha"] = GIT_SHA;
+
   JsonObject chip = data["chip"].to<JsonObject>();
   chip["model"] = ESP.getChipModel();
   chip["revision"] = ESP.getChipRevision();
@@ -609,7 +643,25 @@ static void fillDiagnostics(JsonObject data) {
 
   JsonObject settings = data["settings"].to<JsonObject>();
   settingsService.fillSettings(settings);
+
+  data["event_log_count"] = eventLog.count();
 }
+
+struct RfProfile {
+  const char* name;
+  uint8_t channel;
+  rf24_datarate_e datarate;
+  rf24_pa_dbm_e power;
+  bool autoAck;
+};
+
+static const RfProfile rfProfiles[] = {
+  {"lab",             76, RF24_1MBPS,   RF24_PA_LOW,  true},
+  {"low_power",       76, RF24_250KBPS, RF24_PA_MIN,  true},
+  {"range_test",       2, RF24_250KBPS, RF24_PA_MAX,  true},
+  {"production_test", 76, RF24_1MBPS,   RF24_PA_HIGH, true},
+};
+static constexpr size_t RF_PROFILE_COUNT = sizeof(rfProfiles) / sizeof(rfProfiles[0]);
 
 static void handleDiagnostics(JsonDocument& res) {
   JsonObject data = commandService.makeOk(res, "diagnostics");
@@ -760,6 +812,64 @@ void CommandService::handle(JsonDocument& req, JsonDocument& res, CommandTranspo
   }
   else if (strcmp(cmd, "identify") == 0) {
     handleIdentify(res);
+  }
+  else if (strcmp(cmd, "rf_metrics") == 0) {
+    JsonObject data = makeOk(res, cmd);
+    fillStats(data);
+  }
+  else if (strcmp(cmd, "rf_profiles") == 0) {
+    JsonObject data = makeOk(res, cmd);
+    JsonArray profiles = data["profiles"].to<JsonArray>();
+    for (size_t i = 0; i < RF_PROFILE_COUNT; i++) {
+      JsonObject p = profiles.add<JsonObject>();
+      p["name"] = rfProfiles[i].name;
+      p["channel"] = rfProfiles[i].channel;
+      p["datarate"] = datarateToString(rfProfiles[i].datarate);
+      p["power"] = powerToString(rfProfiles[i].power);
+      p["auto_ack"] = rfProfiles[i].autoAck;
+    }
+  }
+  else if (strcmp(cmd, "rf_apply_profile") == 0) {
+    String profileName;
+    if (!readStringArg(req, "name", profileName)) {
+      makeError(res, cmd, "missing_arg", "name is required");
+      return;
+    }
+    const RfProfile* match = nullptr;
+    for (size_t i = 0; i < RF_PROFILE_COUNT; i++) {
+      if (profileName.equalsIgnoreCase(rfProfiles[i].name)) {
+        match = &rfProfiles[i];
+        break;
+      }
+    }
+    if (!match) {
+      makeError(res, cmd, "invalid_arg", "unknown RF profile name");
+      return;
+    }
+    rfCfg.channel = match->channel;
+    rfCfg.datarate = match->datarate;
+    rfCfg.power = match->power;
+    rfCfg.autoAck = match->autoAck;
+    if (!radioService.applyConfig()) {
+      makeError(res, cmd, "radio_not_initialized", "radio not initialized");
+      return;
+    }
+    settingsService.markDirty();
+    JsonObject data = makeOk(res, cmd);
+    data["profile"] = match->name;
+    radioService.fillConfig(data);
+  }
+  else if (strcmp(cmd, "event_log") == 0) {
+    JsonObject data = makeOk(res, cmd);
+    data["count"] = eventLog.count();
+    JsonArray entries = data["entries"].to<JsonArray>();
+    for (size_t i = 0; i < eventLog.count(); i++) {
+      const EventLogEntry& entry = eventLog.at(i);
+      JsonObject e = entries.add<JsonObject>();
+      e["ms"] = entry.timestampMs;
+      e["type"] = entry.type;
+      e["detail"] = entry.detail;
+    }
   }
   else {
     makeError(res, cmd, "unknown_cmd", "unknown command");

@@ -14,7 +14,7 @@ Attach the report when opening an issue.
 
 - Use a USB-C cable with data support.
 - Run `wdb discover` to list serial ports.
-- Use **Disconnect** in the desktop workbench before opening the same port in another tool.
+- Use **Disconnect** in the local web workbench before opening the same port in another tool.
 - If serial output contains boot messages before command responses, the SDK filters events and waits for the matching command response.
 
 ## RF Pairing
@@ -24,10 +24,10 @@ Attach the report when opening an issue.
 - `node2` defaults to RX `NODE2`, TX `NODE1`.
 - Use ACK-required sends for validation because ACK failures increment `stats.rf_tx_fail`.
 
-## Wi-Fi And Browser Dashboard
+## Wi-Fi And Firmware Browser Dashboard
 
 - Connect the host computer to the dongle AP before opening `http://192.168.4.1`.
-- If optional auth is enabled, enter the token in the browser dashboard settings area.
+- If optional auth is enabled, enter the token in the firmware browser dashboard settings area.
 - AP SSID and password changes require reboot after `settings_save`.
 
 ## BLE

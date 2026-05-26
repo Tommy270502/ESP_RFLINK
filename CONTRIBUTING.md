@@ -1,6 +1,6 @@
 # Contributing
 
-This repository contains firmware, desktop application, SDK, hardware, manufacturing outputs, and documentation. Keep changes scoped to the layer you are modifying and update the matching documentation when behavior changes.
+This repository contains firmware, local web workbench, SDK, hardware, manufacturing outputs, and documentation. Keep changes scoped to the layer you are modifying and update the matching documentation when behavior changes.
 
 ## Development Checks
 
@@ -19,7 +19,7 @@ python -m pip install -e ".[test]"
 python -m pytest
 ```
 
-Desktop workbench:
+Local web workbench:
 
 ```bash
 python -m py_compile application/main.py

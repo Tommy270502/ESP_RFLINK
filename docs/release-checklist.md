@@ -17,7 +17,7 @@ Use this checklist before publishing an external developer release.
 - Fresh flash succeeds on at least one dongle per node role.
 - Serial boot message includes product, firmware version, protocol version, role, radio health, AP IP, and BLE name.
 - `wdb --serial <port> self-test` passes.
-- Browser dashboard loads at `http://192.168.4.1`.
+- Firmware browser dashboard loads at `http://192.168.4.1`.
 - WebSocket packet stream receives RF packet events.
 - BLE command transport responds to `status`.
 - Protocol 1.1 commands `settings_get`, `settings_set`, `settings_save`, `settings_reset`, `diagnostics`, and `identify` pass over USB serial.

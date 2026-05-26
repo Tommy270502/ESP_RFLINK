@@ -17,6 +17,11 @@ void SettingsService::begin() {
   if (!prefs.begin(SETTINGS_NAMESPACE, true)) return;
 
   settingsLoaded = prefs.getBool("valid", false);
+  uint8_t storedVersion = prefs.getUChar("schema_v", 0);
+  if (settingsLoaded && storedVersion != SETTINGS_SCHEMA_VERSION) {
+    settingsLoaded = false;
+    eventLog.add("settings", "schema mismatch, using defaults");
+  }
   if (settingsLoaded) {
     currentDeviceName = prefs.getString("dev_name", currentDeviceName);
     currentApSsid = prefs.getString("ap_ssid", currentApSsid);
@@ -98,6 +103,7 @@ bool SettingsService::save() {
   radioService.copyTxAddress(tx, sizeof(tx));
 
   prefs.putBool("valid", true);
+  prefs.putUChar("schema_v", SETTINGS_SCHEMA_VERSION);
   prefs.putString("dev_name", currentDeviceName);
   prefs.putString("ap_ssid", currentApSsid);
   prefs.putString("ap_pass", currentApPass);
@@ -240,6 +246,7 @@ void SettingsService::fillSecurity(JsonObject data) const {
 
 void SettingsService::fillStorage(JsonObject data) const {
   data["namespace"] = SETTINGS_NAMESPACE;
+  data["schema_version"] = SETTINGS_SCHEMA_VERSION;
   data["loaded_from_nvs"] = settingsLoaded;
   data["dirty"] = settingsDirty;
   data["reboot_required"] = needsReboot;

@@ -46,7 +46,7 @@ The pair test configures complementary addresses, applies matching RF config, fl
 
 ## 5. Save Bench Settings
 
-Apply settings through the CLI or desktop workbench, then save them:
+Apply settings through the CLI or local web workbench, then save them:
 
 ```bash
 wdb --serial COM5 settings-set --json '{"rf":{"channel":76,"datarate":"1mbps","power":"low"},"bridge":{"rf_to_wifi":true,"rf_to_ble":true}}'
@@ -61,4 +61,4 @@ Device name, AP SSID, AP password, and BLE name changes are persisted but requir
 wdb --serial COM5 report --output reports/node1-report.json
 ```
 
-The desktop workbench has the same export under **Export Support Report**.
+The local web workbench has the same export under **Export Support Report**.

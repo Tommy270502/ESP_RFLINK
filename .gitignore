@@ -34,3 +34,6 @@ reports/
 
 # Local archives should be published as release assets instead of tracked
 *.zip
+
+# Local Claude permissions
+.claude/settings.local.json

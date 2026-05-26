@@ -59,3 +59,21 @@ Firmware/ESP32_RFLINK/include/Config.h
 ```
 
 Any PCB routing change that affects the nRF24 SPI bus, CE/CSN, or LEDs must be reflected there before releasing firmware.
+
+## Verification Status
+
+**Verified through design review:**
+
+- Schematic captures ESP32-S3, nRF24L01+, USB-C, and status LED connections.
+- PCB layout generated Gerber/drill output in `manufacturing/gerbers`.
+- Firmware pin map in `Config.h` aligns with schematic net names.
+- BOM components are sourced from standard distributors.
+
+**Requires hardware validation:**
+
+- PCB fabrication and assembly from the current Gerber export.
+- nRF24L01+ SPI communication on the production board.
+- USB-C enumeration and CDC serial on the production board.
+- RF range and reliability testing with production antennas.
+- Thermal behavior under sustained TX/RX workloads.
+- ESD and EMC compliance if applicable to the deployment environment.

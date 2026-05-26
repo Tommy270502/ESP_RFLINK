@@ -29,6 +29,20 @@
 #define BLE_DEVICE_NAME "WirelessDev-Bridge"
 #endif
 
+#ifndef BUILD_DATE
+#define BUILD_DATE __DATE__
+#endif
+
+#ifndef BUILD_PROFILE
+#define BUILD_PROFILE "dev"
+#endif
+
+#ifndef GIT_SHA
+#define GIT_SHA ""
+#endif
+
+static constexpr uint8_t SETTINGS_SCHEMA_VERSION = 1;
+
 namespace Config {
   // Adjust these GPIOs for the final PCB routing.
   static constexpr uint8_t PIN_NRF_CE   = 45;

@@ -9,6 +9,7 @@
 #include "BleService.h"
 #include "CommandService.h"
 #include "WebService.h"
+#include "AppState.h"
 
 static void onRfPacket(const uint8_t* data, size_t len) {
   bridgeService.handleRfPacket(data, len);
@@ -51,6 +52,7 @@ void setup() {
   webService.begin();
   bleService.begin();
   emitBootMessage(rfOk);
+  eventLog.add("boot", rfOk ? "ok" : "radio init failed");
 
   digitalWrite(Config::PIN_LED, HIGH);
 }

@@ -13,7 +13,7 @@ labels: bug
 - Protocol version:
 - Host OS:
 - Python version:
-- Tool used: CLI / SDK / desktop workbench / browser dashboard
+- Tool used: CLI / SDK / local web workbench / firmware browser dashboard
 - Transport: USB serial / HTTP / WebSocket / BLE
 
 ## Device Details

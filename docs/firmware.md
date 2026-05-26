@@ -98,10 +98,7 @@ For hardware validation, flash one `node1` and one `node2`, then run:
 python examples/rf_ping.py --node1-serial COM5 --node2-serial COM6
 ```
 
-<<<<<<< HEAD
 The local web workbench can run the same validation manually: keep both serial ports open, apply matching RF config on both nodes, send ACK-required packets in both directions, and watch `rf_tx`/`rf_rx` counters plus WebSocket/BLE packet events.
-=======
-The desktop workbench can run the same validation manually: keep both serial ports open, apply matching RF config on both nodes, send ACK-required packets in both directions, and watch `rf_tx`/`rf_rx` counters plus WebSocket/BLE packet events.
 
 ## Protocol 1.1 Additions
 
@@ -109,4 +106,3 @@ The desktop workbench can run the same validation manually: keep both serial por
 - `diagnostics` returns support-oriented self-test, status, settings, reset reason, heap, chip, counters, and last-error data.
 - `identify` blinks the LED and returns product, role, firmware, AP, BLE, and MAC-derived identity.
 - Optional token auth protects HTTP, WebSocket, and BLE command surfaces while USB serial remains the trusted setup path.
->>>>>>> 05d28c834b179d240a117645e267be65919b6695
