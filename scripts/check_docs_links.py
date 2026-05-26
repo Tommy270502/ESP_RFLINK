@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
-IGNORED_PARTS = {".git", ".pio", ".venv", "__pycache__", "node_modules"}
+IGNORED_PARTS = {".git", ".pio", ".venv", "__pycache__", "node_modules", "dist"}
 
 
 def main() -> int:

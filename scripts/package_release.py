@@ -37,8 +37,16 @@ def main() -> int:
     zip_dir(ROOT / "docs", output / "wireless-dev-bridge-docs.zip")
     zip_dir(ROOT / "hardware" / "kicad", output / "wireless-dev-bridge-kicad-source.zip")
 
-    for path in ("README.md", "LICENSE", "CHANGELOG.md", "SECURITY.md", "SUPPORT.md"):
-        copy_if_exists(ROOT / path, output / path)
+    for path in (
+        "README.md",
+        "project-overview.md",
+        "LICENSE",
+        "CHANGELOG.md",
+        "SECURITY.md",
+        "SUPPORT.md",
+        "hardware/LICENSE.md",
+    ):
+        copy_if_exists(ROOT / path, output / Path(path).name)
 
     if args.include_builds:
         firmware_root = ROOT / "Firmware" / "ESP32_RFLINK" / ".pio" / "build"

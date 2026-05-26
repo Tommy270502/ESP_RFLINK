@@ -7,7 +7,7 @@ Key files:
 - `Config.h`: firmware constants, pin map, role-specific defaults, BLE UUIDs, RF limits, and product version strings.
 - `CommandService.h`: shared JSON command handler used by serial, HTTP, WebSocket, and BLE transports.
 - `RadioService.h`: nRF24L01+ configuration, TX/RX, listen state, FIFO, and address operations.
-- `WebService.h` and `WebUi.h`: SoftAP HTTP API, browser dashboard, and WebSocket event stream.
+- `WebService.h` and `WebUi.h`: SoftAP HTTP API, firmware browser dashboard, and WebSocket event stream.
 - `BleService.h`: BLE UART-style command and notification transport.
 - `BridgeService.h`: RF packet forwarding state for Wi-Fi/WebSocket and BLE.
 - `AppState.h`: runtime RF config, bridge config, and counters.

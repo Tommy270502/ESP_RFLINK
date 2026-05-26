@@ -77,8 +77,11 @@ bool RadioService::send(const uint8_t* data, size_t len, bool requireAck) {
 
   if (resumeListening) radio.startListening();
 
+  stats.rfTxAttempts++;
   if (ok) stats.rfTx++;
   else stats.rfTxFail++;
+  stats.lastPacketMs = millis();
+  stats.lastPacketLen = len;
 
   return ok;
 }
@@ -194,6 +197,8 @@ void RadioService::poll() {
     radio.read(payload, len);
     packetsRead++;
     stats.rfRx++;
+    stats.lastPacketMs = millis();
+    stats.lastPacketLen = len;
 
     if (onPacket) onPacket(payload, len);
 

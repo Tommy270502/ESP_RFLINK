@@ -26,3 +26,8 @@ zip -r ../wireless-dev-bridge-v1-gerbers.zip .
 ```
 
 Do not commit generated ZIP archives. Attach them to tagged releases instead.
+
+## Status
+
+- **Verified**: Gerber and drill files exist in `manufacturing/gerbers` and correspond to the current KiCad PCB layout.
+- **Open**: Fab order from these outputs has not been confirmed. DRC/ERC review should be repeated before production ordering.

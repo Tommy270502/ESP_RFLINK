@@ -69,6 +69,12 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("settings-save")
     sub.add_parser("settings-reset")
 
+    sub.add_parser("rf-metrics")
+    sub.add_parser("rf-profiles")
+    rf_apply_profile = sub.add_parser("rf-apply-profile")
+    rf_apply_profile.add_argument("name", help="profile name: lab, low_power, range_test, production_test")
+    sub.add_parser("event-log")
+
     settings_set = sub.add_parser("settings-set")
     settings_set.add_argument("--json", default="{}", help="settings object with optional rf, bridge, device, and security keys")
 
@@ -179,6 +185,14 @@ def run_command(bridge: WirelessDevBridge, args: argparse.Namespace) -> Dict[str
         return request(bridge, "diagnostics")
     if args.command == "rf-get-config":
         return request(bridge, "rf_get_config")
+    if args.command == "rf-metrics":
+        return request(bridge, "rf_metrics")
+    if args.command == "rf-profiles":
+        return request(bridge, "rf_profiles")
+    if args.command == "rf-apply-profile":
+        return request(bridge, "rf_apply_profile", name=args.name)
+    if args.command == "event-log":
+        return request(bridge, "event_log")
     if args.command == "settings-get":
         return request(bridge, "settings_get")
     if args.command == "settings-set":

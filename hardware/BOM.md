@@ -12,3 +12,8 @@ Before a public hardware release, export and review:
 - Assembly notes for orientation-sensitive components.
 
 Keep the generated BOM as a release artifact or add a reviewed CSV in this directory once component sourcing is locked.
+
+## Status
+
+- **Verified**: KiCad schematic includes all fitted components with values and footprints.
+- **Open**: Normalized purchasing BOM with distributor SKUs and approved alternates has not been exported for this release.

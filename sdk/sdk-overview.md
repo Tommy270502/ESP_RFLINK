@@ -17,4 +17,4 @@ python -m pip install -e ".[all]"
 
 See [Python SDK guide](python/python-sdk-guide.md) for examples, optional transports, and test instructions.
 
-The desktop workbench in [`../application`](../application/desktop-workbench.md) uses this SDK instead of duplicating the command protocol. It exposes serial, HTTP, WebSocket, BLE, RF config, packet send, bridge toggles, and live WebSocket/BLE packet events.
+The local web workbench in [`../application`](../application/desktop-workbench.md) uses this SDK instead of duplicating the command protocol. It exposes serial, HTTP, WebSocket, BLE, RF config, packet send, bridge toggles, and live WebSocket/BLE packet events.

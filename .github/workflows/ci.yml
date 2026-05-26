@@ -20,10 +20,14 @@ jobs:
         run: |
           cd sdk/python
           python -m pytest
-      - name: Compile desktop workbench
+      - name: Compile local web workbench
         run: python -m py_compile application/main.py
       - name: Check docs links
         run: python scripts/check_docs_links.py
+      - name: Check conflict markers
+        run: python scripts/check_conflict_markers.py
+      - name: Check docs consistency
+        run: python scripts/check_docs_consistency.py
 
   firmware:
     runs-on: ubuntu-latest
@@ -38,6 +42,14 @@ jobs:
         run: |
           cd Firmware/ESP32_RFLINK
           pio run -e node1 -e node2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-node1
+          path: Firmware/ESP32_RFLINK/.pio/build/node1/firmware.bin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-node2
+          path: Firmware/ESP32_RFLINK/.pio/build/node2/firmware.bin
 
   release-package:
     runs-on: ubuntu-latest
